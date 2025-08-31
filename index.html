@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition - Birth Years</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .face-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .face-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .face-label {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .birth-year-input {
+            width: 120px;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .birth-year-input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .duplicate-question {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .submit-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+        }
+        .submit-btn:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Family Photo Face Recognition</h1>
+        <p style="text-align: center; color: #666;">Please provide the birth year for each detected face:</p>
+        
+        <div id="faces-container">
+            <div class="loading">Loading faces...</div>
+        </div>
+
+        <div class="duplicate-question">
+            <label style="font-weight: bold; display: block; margin-bottom: 10px;">
+                Are any of these faces the same person (duplicates)?
+            </label>
+            <label style="display: block; margin: 5px 0;">
+                <input type="radio" name="duplicates" value="yes" style="margin-right: 8px;"> 
+                Yes, some are duplicates
+            </label>
+            <label style="display: block; margin: 5px 0;">
+                <input type="radio" name="duplicates" value="no" style="margin-right: 8px;"> 
+                No, all different people
+            </label>
+        </div>
+
+        <button class="submit-btn" onclick="submitForm()">Submit Birth Years</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Get URL parameters
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Crop face from full image using bbox coordinates
+        function cropFace(imageUrl, bbox, faceIndex, callback) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Calculate crop dimensions
+                const imageWidth = img.naturalWidth;
+                const imageHeight = img.naturalHeight;
+                
+                const cropX = bbox.left * imageWidth;
+                const cropY = bbox.top * imageHeight;
+                const cropWidth = bbox.width * imageWidth;
+                const cropHeight = bbox.height * imageHeight;
+                
+                // Add padding around face (10% on each side)
+                const padding = 0.1;
+                const paddedX = Math.max(0, cropX - cropWidth * padding);
+                const paddedY = Math.max(0, cropY - cropHeight * padding);
+                const paddedWidth = Math.min(imageWidth - paddedX, cropWidth * (1 + 2 * padding));
+                const paddedHeight = Math.min(imageHeight - paddedY, cropHeight * (1 + 2 * padding));
+                
+                // Set canvas size to square (for consistent display)
+                const maxDim = Math.max(paddedWidth, paddedHeight);
+                canvas.width = maxDim;
+                canvas.height = maxDim;
+                
+                // Fill with white background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, maxDim, maxDim);
+                
+                // Center the cropped face
+                const offsetX = (maxDim - paddedWidth) / 2;
+                const offsetY = (maxDim - paddedHeight) / 2;
+                
+                // Draw cropped face
+                ctx.drawImage(
+                    img,
+                    paddedX, paddedY, paddedWidth, paddedHeight,
+                    offsetX, offsetY, paddedWidth, paddedHeight
+                );
+                
+                // Convert to blob and create URL
+                canvas.toBlob(function(blob) {
+                    const croppedUrl = URL.createObjectURL(blob);
+                    callback(croppedUrl);
+                }, 'image/jpeg', 0.9);
+            };
+            
+            img.onerror = function() {
+                console.error('Failed to load image for cropping:', imageUrl);
+                callback(null);
+            };
+            
+            img.src = imageUrl;
+        }
+
+        // Load faces when page loads
+        window.onload = function() {
+            loadFaces();
+        };
+
+        function loadFaces() {
+            const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+            const orderId = getUrlParameter('order_id') || '';
+            
+            if (faceCount === 0) {
+                document.getElementById('faces-container').innerHTML = 
+                    '<div style="text-align: center; color: #999;">No faces provided. This appears to be a demo page.</div>';
+                return;
+            }
+            
+            let facesHtml = '';
+            let facesLoaded = 0;
+            
+            // Create containers for each face
+            for (let i = 1; i <= faceCount; i++) {
+                facesHtml += `
+                    <div class="face-container" id="face-container-${i}">
+                        <div class="face-label">Person ${i}</div>
+                        <div class="loading">Loading face image...</div>
+                        <br>
+                        <label style="display: block; margin-top: 10px;">
+                            Birth Year: 
+                            <input type="number" class="birth-year-input" 
+                                   id="face${i}_year" 
+                                   min="1900" max="2024" 
+                                   placeholder="e.g. 1985">
+                            <div class="error" id="face${i}_error"></div>
+                        </label>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('faces-container').innerHTML = facesHtml;
+            
+            // Load and crop each face
+            for (let i = 1; i <= faceCount; i++) {
+                const faceUrl = getUrlParameter('face' + i + '_url');
+                const left = parseFloat(getUrlParameter('face' + i + '_left')) || 0;
+                const top = parseFloat(getUrlParameter('face' + i + '_top')) || 0;
+                const width = parseFloat(getUrlParameter('face' + i + '_width')) || 1;
+                const height = parseFloat(getUrlParameter('face' + i + '_height')) || 1;
+                
+                if (faceUrl) {
+                    const bbox = { left, top, width, height };
+                    
+                    cropFace(faceUrl, bbox, i, function(croppedUrl) {
+                        const container = document.getElementById('face-container-' + i);
+                        
+                        if (croppedUrl) {
+                            container.innerHTML = `
+                                <div class="face-label">Person ${i}</div>
+                                <img src="${croppedUrl}" alt="Face ${i}" class="face-image">
+                                <br>
+                                <label style="display: block; margin-top: 10px;">
+                                    Birth Year: 
+                                    <input type="number" class="birth-year-input" 
+                                           id="face${i}_year" 
+                                           min="1900" max="2024" 
+                                           placeholder="e.g. 1985">
+                                    <div class="error" id="face${i}_error"></div>
+                                </label>
+                            `;
+                        } else {
+                            container.innerHTML = `
+                                <div class="face-label">Person ${i}</div>
+                                <div style="color: red;">Failed to load face image</div>
+                                <br>
+                                <label style="display: block; margin-top: 10px;">
+                                    Birth Year: 
+                                    <input type="number" class="birth-year-input" 
+                                           id="face${i}_year" 
+                                           min="1900" max="2024" 
+                                           placeholder="e.g. 1985">
+                                    <div class="error" id="face${i}_error"></div>
+                                </label>
+                            `;
+                        }
+                        
+                        facesLoaded++;
+                        if (facesLoaded === faceCount) {
+                            console.log('All faces loaded successfully');
+                        }
+                    });
+                }
+            }
+        }
+
+        function submitForm() {
+            // Clear previous errors
+            document.querySelectorAll('.error').forEach(el => el.textContent = '');
+            
+            // Collect data
+            const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+            const orderId = getUrlParameter('order_id') || '';
+            const duplicates = document.querySelector('input[name="duplicates"]:checked')?.value;
+            
+            const birthYears = {};
+            let hasErrors = false;
+            
+            // Validate birth years
+            for (let i = 1; i <= faceCount; i++) {
+                const input = document.getElementById('face' + i + '_year');
+                const error = document.getElementById('face' + i + '_error');
+                
+                if (input) {
+                    const year = parseInt(input.value);
+                    if (!year || year < 1900 || year > 2024) {
+                        error.textContent = 'Please enter a valid birth year (1900-2024)';
+                        hasErrors = true;
+                    } else {
+                        birthYears['face' + i] = year;
+                    }
+                }
+            }
+            
+            // Validate duplicates question
+            if (!duplicates) {
+                alert('Please answer whether any faces are duplicates.');
+                return;
+            }
+            
+            if (hasErrors) {
+                return;
+            }
+            
+            // Prepare submission data
+            const submissionData = {
+                order_id: orderId,
+                birth_years: birthYears,
+                has_duplicates: duplicates === 'yes',
+                submitted_at: new Date().toISOString()
+            };
+            
+            // Submit to your backend
+            submitToBackend(submissionData);
+        }
+
+        function submitToBackend(data) {
+            // Replace with your actual webhook/API endpoint
+            const webhookUrl = 'https://your-webhook-url-here.com/submit';
+            
+            // For now, just show the data that would be submitted
+            document.getElementById('result').innerHTML = `
+                <div class="success">
+                    <h3>Form Ready to Submit!</h3>
+                    <p>The following data would be sent to your backend:</p>
+                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto;">
+${JSON.stringify(data, null, 2)}
+                    </pre>
+                    <p><em>Configure the webhook URL in the JavaScript to enable actual submission.</em></p>
+                </div>
+            `;
+            
+            // Uncomment below when you have a webhook URL set up
+            /*
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                document.getElementById('result').innerHTML = 
+                    '<div class="success">Thank you! Your responses have been submitted successfully.</div>';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = 
+                    '<div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px;">Error submitting form. Please try again.</div>';
+            });
+            */
+        }
+    </script>
+</body>
+</html>
