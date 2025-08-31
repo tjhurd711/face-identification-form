@@ -260,17 +260,21 @@
                             `;
                         } else {
                             container.innerHTML = `
-                                <div class="face-label">Person ${i}</div>
-                                <div style="color: red;">Failed to load face image</div>
+                                <div class="face-label">Familiar Face ${i}</div>
+                                <div style="color: orange; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <img src="${faceUrl}" alt="Face ${i}" class="face-image" style="max-width: 200px;">
+                                    <br><small>Using full image (face too small to crop)</small>
+                                </div>
                                 <br>
-                                <label style="display: block; margin-top: 10px;">
-                                    Birth Year: 
-                                    <input type="number" class="birth-year-input" 
-                                           id="face${i}_year" 
-                                           min="1900" max="2024" 
-                                           placeholder="e.g. 1985">
-                                    <div class="error" id="face${i}_error"></div>
+                                <label style="display: block; margin-top: 15px; font-weight: bold;">
+                                    Enter Birth Year:
                                 </label>
+                                <input type="number" class="birth-year-input" 
+                                       id="face${i}_year" 
+                                       min="1900" max="2026" 
+                                       placeholder="e.g. 1985"
+                                       style="margin-top: 8px;">
+                                <div class="error" id="face${i}_error"></div>
                             `;
                         }
                         
