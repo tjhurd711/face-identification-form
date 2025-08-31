@@ -245,17 +245,18 @@
                         
                         if (croppedUrl) {
                             container.innerHTML = `
-                                <div class="face-label">Person ${i}</div>
+                                <div class="face-label">Familiar Face ${i}</div>
                                 <img src="${croppedUrl}" alt="Face ${i}" class="face-image">
                                 <br>
-                                <label style="display: block; margin-top: 10px;">
-                                    Birth Year: 
-                                    <input type="number" class="birth-year-input" 
-                                           id="face${i}_year" 
-                                           min="1900" max="2024" 
-                                           placeholder="e.g. 1985">
-                                    <div class="error" id="face${i}_error"></div>
+                                <label style="display: block; margin-top: 15px; font-weight: bold;">
+                                    Enter Birth Year:
                                 </label>
+                                <input type="number" class="birth-year-input" 
+                                       id="face${i}_year" 
+                                       min="1900" max="2026" 
+                                       placeholder="e.g. 1985"
+                                       style="margin-top: 8px;">
+                                <div class="error" id="face${i}_error"></div>
                             `;
                         } else {
                             container.innerHTML = `
@@ -301,8 +302,8 @@
                 
                 if (input) {
                     const year = parseInt(input.value);
-                    if (!year || year < 1900 || year > 2024) {
-                        error.textContent = 'Please enter a valid birth year (1900-2024)';
+                    if (!year || year < 1900 || year > 2026) {
+                        error.textContent = 'Please enter a valid birth year (1900-2026)';
                         hasErrors = true;
                     } else {
                         birthYears['face' + i] = year;
