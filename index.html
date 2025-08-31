@@ -244,9 +244,24 @@
                         const container = document.getElementById('face-container-' + i);
                         
                         if (croppedUrl) {
+                            // Get roll angle and calculate rotation
+                            const rollAngle = parseFloat(getUrlParameter('face' + i + '_roll')) || 0;
+                            let rotationCSS = '';
+
+                            // Apply rotation if face is significantly tilted
+                            if (Math.abs(rollAngle) > 45) {
+                                if (rollAngle > 135 || rollAngle < -135) {
+                                    rotationCSS = 'transform: rotate(180deg);';
+                                } else if (rollAngle > 45) {
+                                    rotationCSS = 'transform: rotate(-90deg);';
+                                } else if (rollAngle < -45) {
+                                    rotationCSS = 'transform: rotate(90deg);';
+                                }
+                            }
+
                             container.innerHTML = `
                                 <div class="face-label">Familiar Face ${i}</div>
-                                <img src="${croppedUrl}" alt="Face ${i}" class="face-image">
+                                <img src="${croppedUrl}" alt="Face ${i}" class="face-image" style="${rotationCSS}">
                                 <br>
                                 <label style="display: block; margin-top: 15px; font-weight: bold;">
                                     Enter Birth Year:
@@ -259,10 +274,22 @@
                                 <div class="error" id="face${i}_error"></div>
                             `;
                         } else {
+                            // Get roll angle for fallback case too
+                            const rollAngle = parseFloat(getUrlParameter('face' + i + '_roll')) || 0;
+                            let rotationCSS = '';
+                            if (Math.abs(rollAngle) > 45) {
+                                if (rollAngle > 135 || rollAngle < -135) {
+                                    rotationCSS = 'transform: rotate(180deg);';
+                                } else if (rollAngle > 45) {
+                                    rotationCSS = 'transform: rotate(-90deg);';
+                                } else if (rollAngle < -45) {
+                                    rotationCSS = 'transform: rotate(90deg);';
+                                }
+                            }
                             container.innerHTML = `
                                 <div class="face-label">Familiar Face ${i}</div>
                                 <div style="color: orange; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                                    <img src="${faceUrl}" alt="Face ${i}" class="face-image" style="max-width: 200px;">
+                                    <img src="${faceUrl}" alt="Face ${i}" class="face-image" style="max-width: 200px; ${rotationCSS}">
                                     <br><small>Using full image (face too small to crop)</small>
                                 </div>
                                 <br>
