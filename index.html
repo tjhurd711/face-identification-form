@@ -178,8 +178,6 @@
             <div class="loading">Loading faces...</div>
         </div>
 
-
-
         <button class="submit-btn" onclick="submitForm()">Submit</button>
         
         <div id="result"></div>
@@ -422,92 +420,83 @@
         function submitForm() {
             // Clear previous errors
             document.querySelectorAll('.error').forEach(el => el.textContent = '');
-            
+    
             // Collect data
             const faceCount = parseInt(getUrlParameter('face_count')) || 0;
             const orderId = getUrlParameter('order_id') || '';
-            
+    
             const birthYears = {};
             const deceasedFaces = [];
             const unsureFaces = [];
             let hasErrors = false;
-            
+    
             // Validate each face
             for (let i = 1; i <= faceCount; i++) {
                 const yearInput = document.getElementById('face' + i + '_year');
                 const deceasedCheckbox = document.getElementById('face' + i + '_deceased');
                 const unsureCheckbox = document.getElementById('face' + i + '_unsure');
                 const error = document.getElementById('face' + i + '_error');
-                
+        
                 if (yearInput && deceasedCheckbox && unsureCheckbox && error) {
                     // Check if this person is marked as deceased
                     if (deceasedCheckbox.checked) {
-                        deceasedFaces.push('face' + i);
-                    }
-                    
-                    // Check if birth year is unsure
-                    if (unsureCheckbox.checked) {
-                        unsureFaces.push('face' + i);
-                    } else {
-                        // Validate birth year if not marked as unsure
-                        const year = parseInt(yearInput.value);
-                        if (!year || year < 1900 || year > 2026) {
-                            error.textContent = 'Please enter a valid birth year (1900-2026) or check "unsure"';
-                            hasErrors = true;
-                        } else {
-                            birthYears['face' + i] = year;
-                        }
-                    }
-                }
-            }
+                        deceasedFaces.push(`person_${i}`);
+                   }
             
-            // Validate duplicates question
-            if (!duplicates) {
-                alert('Please answer whether any faces are duplicates.');
+                   // Check if birth year is unsure
+                   if (unsureCheckbox.checked) {
+                       unsureFaces.push(`person_${i}`);
+                   } else {
+                       // Validate birth year if not marked as unsure
+                       const year = parseInt(yearInput.value);
+                       if (!year || year < 1900 || year > 2026) {
+                           error.textContent = 'Please enter a valid birth year (1900-2026) or check "unsure"';
+                           hasErrors = true;
+                       } else {
+                         birthYears[`person_${i}`] = year;
+                       }
+                  }
+             }
+        }
+    
+        // CRITICAL VALIDATION: Check deceased person logic
+        if (deceasedFaces.length === 0) {
+            // No one marked as deceased - show special handling
+            if (!confirm('No one was marked as the deceased person. Is the deceased person not shown in these faces?')) {
                 return;
             }
-            
-            // Check if more than one person is marked as deceased
-            if (deceasedFaces.length > 1) {
-                alert('Please select only one person as the deceased person.');
+            // If confirmed, we'll handle this in the webhook as "no_deceased_identified"
+        } else if (deceasedFaces.length > 1) {
+            // Multiple people marked - this is OK, we'll merge them
+            if (!confirm(`You marked ${deceasedFaces.length} faces as the deceased person. This likely means the same person appears in multiple age ranges. We'll merge these together. Continue?`)) {
                 return;
             }
-            
-            if (hasErrors) {
-                return;
-            }
+        }
+    
+        if (hasErrors) {
+            return;
+        }
             
             // Prepare submission data
             const submissionData = {
                 order_id: orderId,
                 birth_years: birthYears,
-                deceased_face: deceasedFaces.length > 0 ? deceasedFaces[0] : null,
+                deceased_faces: deceasedFaces,
                 unsure_faces: unsureFaces,
-                submitted_at: new Date().toISOString()
+                submitted_at: new Date().toISOString(),
+                face_count: faceCount
             };
-            
-            // Submit to your backend
-            submitToBackend(submissionData);
+
+            // Submit to webhook
+            submitToWebhook(submissionData);
         }
 
-        function submitToBackend(data) {
-            // Replace with your actual webhook/API endpoint
-            const webhookUrl = 'https://your-webhook-url-here.com/submit';
+        function submitToWebhook(data) {
+            // Replace with your actual API Gateway webhook URL  
+            const webhookUrl = 'https://your-api-gateway-url.amazonaws.com/submit-face-data';
             
-            // For now, just show the data that would be submitted
-            document.getElementById('result').innerHTML = `
-                <div class="success">
-                    <h3>Form Ready to Submit!</h3>
-                    <p>The following data would be sent to your backend:</p>
-                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto;">
-${JSON.stringify(data, null, 2)}
-                    </pre>
-                    <p><em>Configure the webhook URL in the JavaScript to enable actual submission.</em></p>
-                </div>
-            `;
+            document.getElementById('result').innerHTML = '<div class="loading">Submitting your responses...</div>';
             
-            // Uncomment below when you have a webhook URL set up
-            /*
             fetch(webhookUrl, {
                 method: 'POST',
                 headers: {
@@ -517,15 +506,27 @@ ${JSON.stringify(data, null, 2)}
             })
             .then(response => response.json())
             .then(result => {
-                document.getElementById('result').innerHTML = 
-                    '<div class="success">Thank you! Your responses have been submitted successfully.</div>';
+                if (result.statusCode === 200) {
+                    document.getElementById('result').innerHTML = `
+                        <div class="success">
+                            <h3>Thank you!</h3>
+                            <p>Your responses have been submitted successfully.</p>
+                            <p>We'll now process your photos using this information.</p>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Submission failed');
+                }
             })
             .catch(error => {
                 console.error('Error:', error);
-                document.getElementById('result').innerHTML = 
-                    '<div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px;">Error submitting form. Please try again.</div>';
+                document.getElementById('result').innerHTML = `
+                    <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px;">
+                        <h3>Submission Error</h3>
+                        <p>Please try again. Error: ${error.message}</p>
+                    </div>
+                `;
             });
-            */
         }
     </script>
 </body>
