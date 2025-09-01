@@ -442,73 +442,49 @@
 
         async function submitToS3(data) {
             document.getElementById('result').innerHTML = '<div class="loading">Submitting your responses...</div>';
-            
+    
             try {
                 const orderId = data.order_id;
-                
-                const presignedResponse = await fetch('https://your-setup-lambda-api.amazonaws.com/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'get_form_upload_urls',
-                        UID: orderId
-                    })
-                });
-                
-                if (!presignedResponse.ok) {
-                    throw new Error('Failed to get upload URLs');
-                }
-                
-                const urls = await presignedResponse.json();
-                
-                const formDataResponse = await fetch(urls.form_data_url, {
+        
+                // Upload form data to existing location  
+                const formDataKey = `ff-analysis/${orderId}/form_submission.json`;
+                const formDataUrl = `https://order-by-age-uploads.s3.amazonaws.com/${formDataKey}`;
+        
+                await fetch(formDataUrl, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                
-                if (!formDataResponse.ok) {
-                    throw new Error('Failed to upload form data');
-                }
-                
-                const flagData = {
-                    completed_at: new Date().toISOString(),
-                    deceased_person_identified: data.deceased_faces.length > 0,
-                    final_face_count: Object.keys(data.birth_years).length,
-                    form_data_location: `ff-analysis/${orderId}/form_submission.json`
-                };
-                
-                const flagResponse = await fetch(urls.completion_flag_url, {
+        
+                // Create completion flag in new trigger location
+                const completionKey = `second-start/${orderId}/form.complete`;
+                const completionUrl = `https://order-by-age-uploads.s3.amazonaws.com/${completionKey}`;
+        
+                await fetch(completionUrl, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(flagData)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        completed_at: new Date().toISOString(),
+                        deceased_person_identified: data.deceased_faces.length > 0
+                    })
                 });
-                
-                if (!flagResponse.ok) {
-                    throw new Error('Failed to create completion flag');
-                }
-                
+        
                 document.getElementById('result').innerHTML = `
                     <div class="success">
                         <h3>Thank you!</h3>
                         <p>Your responses have been submitted successfully.</p>
-                        <p>We'll now process your photos using this information.</p>
                     </div>
                 `;
-                
+        
             } catch (error) {
-                console.error('Error:', error);
                 document.getElementById('result').innerHTML = `
                     <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px;">
                         <h3>Submission Error</h3>
                         <p>Please try again. Error: ${error.message}</p>
                     </div>
+                `;
+            }
+       }
                 `;
             }
         }
