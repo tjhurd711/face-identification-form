@@ -11,24 +11,27 @@
             margin: 0 auto;
             padding: 20px;
             background-color: #f5f5f5;
+            min-height: 100vh;
         }
         .container {
-            background: white;
+            background: #ede7d4;
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            color: #63462f;
         }
         h1 {
             text-align: center;
-            color: #333;
+            color: #63462f;
             margin-bottom: 30px;
         }
         .face-container {
             margin-bottom: 30px;
             padding: 20px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid #63462f;
             border-radius: 8px;
             text-align: center;
+            background: rgba(237, 231, 212, 0.9);
         }
         .face-image {
             max-width: 200px;
@@ -41,7 +44,7 @@
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 10px;
-            color: #333;
+            color: #63462f;
         }
         
         /* New layout for the input section */
@@ -71,10 +74,12 @@
             width: 120px;
             padding: 10px;
             font-size: 16px;
-            border: 2px solid #ddd;
+            border: 2px solid #63462f;
             border-radius: 5px;
             text-align: center;
             margin-bottom: 8px;
+            background: white;
+            color: #63462f;
         }
         
         .birth-year-input:focus {
@@ -115,8 +120,10 @@
         .duplicate-question {
             margin: 30px 0;
             padding: 20px;
-            background-color: #f8f9fa;
+            background-color: rgba(237, 231, 212, 0.9);
+            border: 2px solid #63462f;
             border-radius: 8px;
+            color: #63462f;
         }
         .submit-btn {
             background-color: #007bff;
@@ -164,28 +171,16 @@
 </head>
 <body>
     <div class="container">
-        <h1>Family Photo Face Recognition</h1>
+        <h1>Sort By Age - Family Photo Face Recognition</h1>
         <p style="text-align: center; color: #666;">Please provide the birth year for each detected face:</p>
         
         <div id="faces-container">
             <div class="loading">Loading faces...</div>
         </div>
 
-        <div class="duplicate-question">
-            <label style="font-weight: bold; display: block; margin-bottom: 10px;">
-                Are any of these faces the same person (duplicates)?
-            </label>
-            <label style="display: block; margin: 5px 0;">
-                <input type="radio" name="duplicates" value="yes" style="margin-right: 8px;"> 
-                Yes, some are duplicates
-            </label>
-            <label style="display: block; margin: 5px 0;">
-                <input type="radio" name="duplicates" value="no" style="margin-right: 8px;"> 
-                No, all different people
-            </label>
-        </div>
 
-        <button class="submit-btn" onclick="submitForm()">Submit Birth Years</button>
+
+        <button class="submit-btn" onclick="submitForm()">Submit</button>
         
         <div id="result"></div>
     </div>
@@ -348,7 +343,7 @@
                                     
                                     <div class="birth-year-section">
                                         <label style="font-weight: bold; margin-bottom: 8px;">
-                                            Enter Birth Year:
+                                            Enter Birth Year (at least within 3 years):
                                         </label>
                                         <input type="number" class="birth-year-input" 
                                                id="face${i}_year" 
@@ -396,7 +391,7 @@
                                     
                                     <div class="birth-year-section">
                                         <label style="font-weight: bold; margin-bottom: 8px;">
-                                            Enter Birth Year:
+                                            Enter Birth Year (at least within 3 years):
                                         </label>
                                         <input type="number" class="birth-year-input" 
                                                id="face${i}_year" 
@@ -431,7 +426,6 @@
             // Collect data
             const faceCount = parseInt(getUrlParameter('face_count')) || 0;
             const orderId = getUrlParameter('order_id') || '';
-            const duplicates = document.querySelector('input[name="duplicates"]:checked')?.value;
             
             const birthYears = {};
             const deceasedFaces = [];
@@ -489,7 +483,6 @@
                 birth_years: birthYears,
                 deceased_face: deceasedFaces.length > 0 ? deceasedFaces[0] : null,
                 unsure_faces: unsureFaces,
-                has_duplicates: duplicates === 'yes',
                 submitted_at: new Date().toISOString()
             };
             
