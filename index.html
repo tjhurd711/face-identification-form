@@ -227,6 +227,25 @@
             <div class="loading">Loading faces...</div>
         </div>
 
+        <!-- Conditional button for when deceased person is not shown -->
+        <div id="no-deceased-button" style="text-align: center; margin: 20px 0; display: none;">
+            <button onclick="handleNoDeceasedShown()" style="
+                background-color: #6c757d; 
+                color: white; 
+                padding: 15px 25px; 
+                border: none; 
+                border-radius: 5px; 
+                font-size: 16px; 
+                cursor: pointer;
+                margin-bottom: 10px;
+            ">
+                Click this button if the person who passed's face did not show up on this form
+            </button>
+            <div style="font-size: 12px; color: #666;">
+                This will mark that the deceased person is not among the detected faces
+            </div>
+        </div>
+
         <button class="submit-btn" onclick="submitForm()">Submit</button>
         
         <div id="result"></div>
@@ -385,7 +404,7 @@
                             <div class="input-section">
                                 <div class="checkbox-section">
                                     <label class="checkbox-label deceased-checkbox">
-                                        <input type="checkbox" id="face${i}_deceased">
+                                        <input type="checkbox" id="face${i}_deceased" onchange="updateDeceasedButtonVisibility()">
                                         Check this box if this is the person who has passed
                                     </label>
                                 </div>
@@ -431,6 +450,9 @@
                     `;
                 }
             }
+            
+            // Initialize the deceased button visibility after loading
+            initializeDeceasedButton();
         }
 
         function openModal(imageUrl, bbox, rotationCSS) {
@@ -452,6 +474,56 @@
             } catch (error) {
                 console.error('Error opening modal:', error);
             }
+        }
+
+        let deceasedNotShownFlag = false;
+
+        function updateDeceasedButtonVisibility() {
+            const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+            let anyDeceasedChecked = false;
+
+            // Check if any deceased checkbox is checked
+            for (let i = 1; i <= faceCount; i++) {
+                const deceasedCheckbox = document.getElementById('face' + i + '_deceased');
+                if (deceasedCheckbox && deceasedCheckbox.checked) {
+                    anyDeceasedChecked = true;
+                    break;
+                }
+            }
+
+            // Show button only if no deceased boxes are checked
+            const noDeceasedButton = document.getElementById('no-deceased-button');
+            if (noDeceasedButton) {
+                noDeceasedButton.style.display = anyDeceasedChecked ? 'none' : 'block';
+            }
+
+            // Reset the flag if someone checks a deceased box
+            if (anyDeceasedChecked) {
+                deceasedNotShownFlag = false;
+            }
+        }
+
+        function handleNoDeceasedShown() {
+            deceasedNotShownFlag = true;
+            const noDeceasedButton = document.getElementById('no-deceased-button');
+            if (noDeceasedButton) {
+                noDeceasedButton.style.display = 'none';
+            }
+            
+            // Show confirmation message
+            const confirmation = document.createElement('div');
+            confirmation.style.cssText = 'text-align: center; color: #6c757d; font-weight: bold; margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px;';
+            confirmation.innerHTML = 'Noted: The deceased person is not shown in these detected faces.';
+            
+            const submitBtn = document.querySelector('.submit-btn');
+            submitBtn.parentNode.insertBefore(confirmation, submitBtn);
+        }
+
+        // Call this function after all faces are loaded
+        function initializeDeceasedButton() {
+            setTimeout(() => {
+                updateDeceasedButtonVisibility();
+            }, 1000); // Give time for all faces to load
         }
 
         function addModalFaceBox(imgElement, bbox) {
@@ -529,7 +601,7 @@
              }
         }
     
-        if (deceasedFaces.length === 0) {
+        if (deceasedFaces.length === 0 && !deceasedNotShownFlag) {
             if (!confirm('No one was marked as the deceased person. Is the deceased person not shown in these faces?')) {
                 return;
             }
@@ -548,6 +620,7 @@
                 birth_years: birthYears,
                 deceased_faces: deceasedFaces,
                 unsure_faces: unsureFaces,
+                deceased_not_shown: deceasedNotShownFlag,
                 submitted_at: new Date().toISOString(),
                 face_count: faceCount
             };
