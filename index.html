@@ -435,55 +435,50 @@
 
         function openModal(imageUrl, bbox, rotationCSS) {
             try {
+                console.log('Opening modal with:', { imageUrl, bbox, rotationCSS }); // Debug line
                 const modal = document.getElementById('imageModal');
                 const modalContainer = document.getElementById('modalImageContainer');
                 if (modal && modalContainer) {
-                    // Create a new image element to get dimensions
-                    const img = new Image();
-                    img.onload = function() {
-                        // Calculate modal image size (up to 90vh/90vw)
-                        const maxWidth = window.innerWidth * 0.9;
-                        const maxHeight = window.innerHeight * 0.9;
-                        
-                        let displayWidth = img.naturalWidth;
-                        let displayHeight = img.naturalHeight;
-                        
-                        // Scale down if image is too large
-                        if (displayWidth > maxWidth || displayHeight > maxHeight) {
-                            const widthRatio = maxWidth / displayWidth;
-                            const heightRatio = maxHeight / displayHeight;
-                            const ratio = Math.min(widthRatio, heightRatio);
-                            
-                            displayWidth = displayWidth * ratio;
-                            displayHeight = displayHeight * ratio;
-                        }
-                        
-                        // Calculate face box position for modal
-                        const boxLeft = bbox.left * displayWidth;
-                        const boxTop = bbox.top * displayHeight;
-                        const boxWidth = bbox.width * displayWidth;
-                        const boxHeight = bbox.height * displayHeight;
-                        
-                        modalContainer.innerHTML = `
-                            <div class="modal-image-overlay">
-                                <img src="${imageUrl}" style="width: ${displayWidth}px; height: ${displayHeight}px; ${rotationCSS}">
-                                <div class="modal-face-box" style="
-                                    left: ${boxLeft}px; 
-                                    top: ${boxTop}px; 
-                                    width: ${boxWidth}px; 
-                                    height: ${boxHeight}px;
-                                "></div>
-                            </div>
-                        `;
-                        
-                        modal.style.display = 'block';
-                    };
-                    img.src = imageUrl;
+                    // First, show the modal with just the image
+                    modalContainer.innerHTML = `
+                        <div class="modal-image-overlay">
+                            <img src="${imageUrl}" style="max-width: 90vw; max-height: 90vh; ${rotationCSS}" onload="addModalFaceBox(this, ${JSON.stringify(bbox)})">
+                        </div>
+                    `;
+                    modal.style.display = 'block';
                 } else {
                     console.error('Modal elements not found');
                 }
             } catch (error) {
                 console.error('Error opening modal:', error);
+            }
+        }
+
+        function addModalFaceBox(imgElement, bbox) {
+            try {
+                console.log('Adding face box to modal:', { bbox, imgWidth: imgElement.offsetWidth, imgHeight: imgElement.offsetHeight }); // Debug line
+                
+                const overlay = imgElement.parentElement;
+                const displayWidth = imgElement.offsetWidth;
+                const displayHeight = imgElement.offsetHeight;
+                
+                const boxLeft = bbox.left * displayWidth;
+                const boxTop = bbox.top * displayHeight;
+                const boxWidth = bbox.width * displayWidth;
+                const boxHeight = bbox.height * displayHeight;
+                
+                console.log('Calculated box position:', { boxLeft, boxTop, boxWidth, boxHeight }); // Debug line
+                
+                const faceBox = document.createElement('div');
+                faceBox.className = 'modal-face-box';
+                faceBox.style.left = boxLeft + 'px';
+                faceBox.style.top = boxTop + 'px';
+                faceBox.style.width = boxWidth + 'px';
+                faceBox.style.height = boxHeight + 'px';
+                
+                overlay.appendChild(faceBox);
+            } catch (error) {
+                console.error('Error adding face box:', error);
             }
         }
 
