@@ -144,6 +144,16 @@
             font-family: monospace;
             font-size: 12px;
         }
+        .image-overlay {
+            position: relative;
+            display: inline-block;
+        }
+        .face-box {
+            position: absolute;
+            border: 3px solid #007bff;
+            border-radius: 5px;
+            background: rgba(0, 123, 255, 0.1);
+        }
         @media (max-width: 600px) {
             .input-section {
                 flex-direction: column;
@@ -193,7 +203,6 @@
             const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
             const results = regex.exec(location.search);
             const value = results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
-            debugLog(`URL param ${name}`, value);
             return value;
         }
 
@@ -211,82 +220,64 @@
             }
         }
 
-        function cropFace(imageUrl, bbox, faceIndex, callback) {
-            debugLog(`Starting crop for face ${faceIndex}`, { imageUrl, bbox });
+        function showDirectImage(imageUrl, bbox, faceIndex, roll) {
+            debugLog(`Showing direct image for face ${faceIndex}`, { imageUrl, bbox, roll });
             
-            const img = new Image();
-            // Remove crossOrigin to avoid CORS issues for testing
-            // img.crossOrigin = 'anonymous';
-            
-            img.onload = function() {
-                debugLog(`Image loaded successfully for face ${faceIndex}`, {
-                    naturalWidth: img.naturalWidth,
-                    naturalHeight: img.naturalHeight
-                });
+            return new Promise((resolve) => {
+                const img = new Image();
                 
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                
-                const imageWidth = img.naturalWidth;
-                const imageHeight = img.naturalHeight;
-                
-                const cropX = bbox.left * imageWidth;
-                const cropY = bbox.top * imageHeight;
-                const cropWidth = bbox.width * imageWidth;
-                const cropHeight = bbox.height * imageHeight;
-                
-                const padding = 0.1;
-                const paddedX = Math.max(0, cropX - cropWidth * padding);
-                const paddedY = Math.max(0, cropY - cropHeight * padding);
-                const paddedWidth = Math.min(imageWidth - paddedX, cropWidth * (1 + 2 * padding));
-                const paddedHeight = Math.min(imageHeight - paddedY, cropHeight * (1 + 2 * padding));
-                
-                const maxDim = Math.max(paddedWidth, paddedHeight);
-                canvas.width = maxDim;
-                canvas.height = maxDim;
-                
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, maxDim, maxDim);
-                
-                const offsetX = (maxDim - paddedWidth) / 2;
-                const offsetY = (maxDim - paddedHeight) / 2;
-                
-                ctx.drawImage(
-                    img,
-                    paddedX, paddedY, paddedWidth, paddedHeight,
-                    offsetX, offsetY, paddedWidth, paddedHeight
-                );
-                
-                canvas.toBlob(function(blob) {
-                    if (blob) {
-                        const croppedUrl = URL.createObjectURL(blob);
-                        debugLog(`Cropping successful for face ${faceIndex}`);
-                        callback(croppedUrl);
-                    } else {
-                        debugLog(`Blob creation failed for face ${faceIndex}`);
-                        callback(null);
+                img.onload = function() {
+                    debugLog(`Direct image loaded for face ${faceIndex}`, {
+                        naturalWidth: img.naturalWidth,
+                        naturalHeight: img.naturalHeight
+                    });
+                    
+                    // Calculate face box position
+                    const imgWidth = 300; // Display width
+                    const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
+                    
+                    const boxLeft = bbox.left * imgWidth;
+                    const boxTop = bbox.top * imgHeight;
+                    const boxWidth = bbox.width * imgWidth;
+                    const boxHeight = bbox.height * imgHeight;
+                    
+                    let rotationCSS = '';
+                    if (Math.abs(roll) > 45) {
+                        if (roll > 135 || roll < -135) {
+                            rotationCSS = 'transform: rotate(180deg);';
+                        } else if (roll > 45) {
+                            rotationCSS = 'transform: rotate(-90deg);';
+                        } else if (roll < -45) {
+                            rotationCSS = 'transform: rotate(90deg);';
+                        }
                     }
-                }, 'image/jpeg', 0.9);
-            };
-            
-            img.onerror = function(error) {
-                debugLog(`Image load error for face ${faceIndex}`, {
-                    error: error,
-                    imageUrl: imageUrl
-                });
-                callback(null);
-            };
-            
-            // Test if URL is accessible first
-            fetch(imageUrl, { method: 'HEAD', mode: 'no-cors' })
-                .then(() => {
-                    debugLog(`URL accessibility check passed for face ${faceIndex}`);
-                    img.src = imageUrl;
-                })
-                .catch(() => {
-                    debugLog(`URL accessibility check failed for face ${faceIndex}, trying direct load`);
-                    img.src = imageUrl;
-                });
+                    
+                    const imageHtml = `
+                        <div class="image-overlay">
+                            <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
+                                 style="max-width: 300px; height: auto; ${rotationCSS}">
+                            <div class="face-box" style="
+                                left: ${boxLeft}px; 
+                                top: ${boxTop}px; 
+                                width: ${boxWidth}px; 
+                                height: ${boxHeight}px;
+                            "></div>
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                            Blue box shows detected face area
+                        </div>
+                    `;
+                    
+                    resolve(imageHtml);
+                };
+                
+                img.onerror = function() {
+                    debugLog(`Direct image failed for face ${faceIndex}`);
+                    resolve(`<div style="color: red;">Failed to load image</div>`);
+                };
+                
+                img.src = imageUrl;
+            });
         }
 
         window.onload = function() {
@@ -294,7 +285,7 @@
             loadFaces();
         };
 
-        function loadFaces() {
+        async function loadFaces() {
             const faceCount = parseInt(getUrlParameter('face_count')) || 0;
             const orderId = getUrlParameter('order_id') || '';
             
@@ -308,11 +299,10 @@
             }
             
             let facesHtml = '';
-            let facesLoaded = 0;
             
             // Show all URL parameters for debugging
             const allParams = new URLSearchParams(window.location.search);
-            debugLog('All URL parameters', Object.fromEntries(allParams));
+            debugLog('All URL parameters found');
             
             for (let i = 1; i <= faceCount; i++) {
                 facesHtml += `
@@ -325,6 +315,7 @@
             
             document.getElementById('faces-container').innerHTML = facesHtml;
             
+            // Load faces one by one
             for (let i = 1; i <= faceCount; i++) {
                 const faceUrl = getUrlParameter('face' + i + '_url');
                 const left = parseFloat(getUrlParameter('face' + i + '_left')) || 0;
@@ -338,107 +329,54 @@
                 if (faceUrl) {
                     const bbox = { left, top, width, height };
                     
-                    cropFace(faceUrl, bbox, i, function(croppedUrl) {
+                    try {
+                        const imageHtml = await showDirectImage(faceUrl, bbox, i, roll);
                         const container = document.getElementById('face-container-' + i);
                         
-                        if (croppedUrl) {
-                            let rotationCSS = '';
-                            if (Math.abs(roll) > 45) {
-                                if (roll > 135 || roll < -135) {
-                                    rotationCSS = 'transform: rotate(180deg);';
-                                } else if (roll > 45) {
-                                    rotationCSS = 'transform: rotate(-90deg);';
-                                } else if (roll < -45) {
-                                    rotationCSS = 'transform: rotate(90deg);';
-                                }
-                            }
-
-                            container.innerHTML = `
-                                <div class="face-label">Familiar Face ${i}</div>
-                                <img src="${croppedUrl}" alt="Face ${i}" class="face-image" style="${rotationCSS}">
-                                
-                                <div class="input-section">
-                                    <div class="checkbox-section">
-                                        <label class="checkbox-label deceased-checkbox">
-                                            <input type="checkbox" id="face${i}_deceased">
-                                            Check this box if this is the person who has passed
-                                        </label>
-                                    </div>
-                                    
-                                    <div class="birth-year-section">
-                                        <label style="font-weight: bold; margin-bottom: 8px;">
-                                            Enter Birth Year (at least within 3 years):
-                                        </label>
-                                        <input type="number" class="birth-year-input" 
-                                               id="face${i}_year" 
-                                               min="1900" max="2026" 
-                                               placeholder="e.g. 1985">
-                                        <div class="error" id="face${i}_error"></div>
-                                    </div>
-                                    
-                                    <div class="checkbox-section">
-                                        <label class="checkbox-label unsure-checkbox">
-                                            <input type="checkbox" id="face${i}_unsure" onchange="handleUnsureChange(${i})">
-                                            Select this box if you aren't sure of the birth year
-                                        </label>
-                                    </div>
-                                </div>
-                            `;
-                        } else {
-                            // Fallback to original image if cropping fails
-                            let rotationCSS = '';
-                            if (Math.abs(roll) > 45) {
-                                if (roll > 135 || roll < -135) {
-                                    rotationCSS = 'transform: rotate(180deg);';
-                                } else if (roll > 45) {
-                                    rotationCSS = 'transform: rotate(-90deg);';
-                                } else if (roll < -45) {
-                                    rotationCSS = 'transform: rotate(90deg);';
-                                }
-                            }
+                        container.innerHTML = `
+                            <div class="face-label">Familiar Face ${i}</div>
+                            ${imageHtml}
                             
-                            container.innerHTML = `
-                                <div class="face-label">Familiar Face ${i}</div>
-                                <div style="color: orange; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                                    <img src="${faceUrl}" alt="Face ${i}" class="face-image" style="max-width: 200px; ${rotationCSS}">
-                                    <br><small>Using full image (cropping failed or face too small)</small>
+                            <div class="input-section">
+                                <div class="checkbox-section">
+                                    <label class="checkbox-label deceased-checkbox">
+                                        <input type="checkbox" id="face${i}_deceased">
+                                        Check this box if this is the person who has passed
+                                    </label>
                                 </div>
                                 
-                                <div class="input-section">
-                                    <div class="checkbox-section">
-                                        <label class="checkbox-label deceased-checkbox">
-                                            <input type="checkbox" id="face${i}_deceased">
-                                            Check this box if this is the person who has passed
-                                        </label>
-                                    </div>
-                                    
-                                    <div class="birth-year-section">
-                                        <label style="font-weight: bold; margin-bottom: 8px;">
-                                            Enter Birth Year (at least within 3 years):
-                                        </label>
-                                        <input type="number" class="birth-year-input" 
-                                               id="face${i}_year" 
-                                               min="1900" max="2026" 
-                                               placeholder="e.g. 1985">
-                                        <div class="error" id="face${i}_error"></div>
-                                    </div>
-                                    
-                                    <div class="checkbox-section">
-                                        <label class="checkbox-label unsure-checkbox">
-                                            <input type="checkbox" id="face${i}_unsure" onchange="handleUnsureChange(${i})">
-                                            Select this box if you aren't sure of the birth year
-                                        </label>
-                                    </div>
+                                <div class="birth-year-section">
+                                    <label style="font-weight: bold; margin-bottom: 8px;">
+                                        Enter Birth Year (at least within 3 years):
+                                    </label>
+                                    <input type="number" class="birth-year-input" 
+                                           id="face${i}_year" 
+                                           min="1900" max="2026" 
+                                           placeholder="e.g. 1985">
+                                    <div class="error" id="face${i}_error"></div>
                                 </div>
-                            `;
-                        }
+                                
+                                <div class="checkbox-section">
+                                    <label class="checkbox-label unsure-checkbox">
+                                        <input type="checkbox" id="face${i}_unsure" onchange="handleUnsureChange(${i})">
+                                        Select this box if you aren't sure of the birth year
+                                    </label>
+                                </div>
+                            </div>
+                        `;
                         
-                        facesLoaded++;
-                        debugLog(`Face ${i} loaded successfully (${facesLoaded}/${faceCount})`);
-                        if (facesLoaded === faceCount) {
-                            debugLog('All faces loaded successfully');
-                        }
-                    });
+                        debugLog(`Face ${i} loaded and rendered successfully`);
+                        
+                    } catch (error) {
+                        debugLog(`Error loading face ${i}`, error);
+                        const container = document.getElementById('face-container-' + i);
+                        container.innerHTML = `
+                            <div class="face-label">Face ${i}</div>
+                            <div style="color: red; padding: 10px;">
+                                Error loading face image
+                            </div>
+                        `;
+                    }
                 } else {
                     debugLog(`No face URL found for face ${i}`);
                     const container = document.getElementById('face-container-' + i);
@@ -448,9 +386,10 @@
                             No image URL provided for this face
                         </div>
                     `;
-                    facesLoaded++;
                 }
             }
+            
+            debugLog(`Finished processing all ${faceCount} faces`);
         }
 
         function submitForm() {
