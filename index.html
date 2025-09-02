@@ -135,6 +135,15 @@
             color: #666;
             font-style: italic;
         }
+        .debug-info {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
         @media (max-width: 600px) {
             .input-section {
                 flex-direction: column;
@@ -151,6 +160,12 @@
         <h1>Sort By Age - Family Photo Face Recognition</h1>
         <p style="text-align: center; color: #666;">Please provide the birth year for each detected face:</p>
         
+        <!-- Debug Info -->
+        <div class="debug-info" id="debug-info">
+            <strong>Debug Information:</strong><br>
+            Loading URL parameters...
+        </div>
+        
         <div id="faces-container">
             <div class="loading">Loading faces...</div>
         </div>
@@ -161,11 +176,25 @@
     </div>
 
     <script>
+        // Enhanced debug logging
+        function debugLog(message, data = null) {
+            console.log(`[DEBUG] ${message}`, data);
+            const debugDiv = document.getElementById('debug-info');
+            if (debugDiv) {
+                debugDiv.innerHTML += `<br>${message}`;
+                if (data) {
+                    debugDiv.innerHTML += `: ${JSON.stringify(data)}`;
+                }
+            }
+        }
+
         function getUrlParameter(name) {
             name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
             const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
             const results = regex.exec(location.search);
-            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+            const value = results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+            debugLog(`URL param ${name}`, value);
+            return value;
         }
 
         function handleUnsureChange(faceIndex) {
@@ -183,10 +212,18 @@
         }
 
         function cropFace(imageUrl, bbox, faceIndex, callback) {
+            debugLog(`Starting crop for face ${faceIndex}`, { imageUrl, bbox });
+            
             const img = new Image();
-            img.crossOrigin = 'anonymous';
+            // Remove crossOrigin to avoid CORS issues for testing
+            // img.crossOrigin = 'anonymous';
             
             img.onload = function() {
+                debugLog(`Image loaded successfully for face ${faceIndex}`, {
+                    naturalWidth: img.naturalWidth,
+                    naturalHeight: img.naturalHeight
+                });
+                
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
@@ -221,20 +258,39 @@
                 );
                 
                 canvas.toBlob(function(blob) {
-                    const croppedUrl = URL.createObjectURL(blob);
-                    callback(croppedUrl);
+                    if (blob) {
+                        const croppedUrl = URL.createObjectURL(blob);
+                        debugLog(`Cropping successful for face ${faceIndex}`);
+                        callback(croppedUrl);
+                    } else {
+                        debugLog(`Blob creation failed for face ${faceIndex}`);
+                        callback(null);
+                    }
                 }, 'image/jpeg', 0.9);
             };
             
-            img.onerror = function() {
-                console.error('Failed to load image for cropping:', imageUrl);
+            img.onerror = function(error) {
+                debugLog(`Image load error for face ${faceIndex}`, {
+                    error: error,
+                    imageUrl: imageUrl
+                });
                 callback(null);
             };
             
-            img.src = imageUrl;
+            // Test if URL is accessible first
+            fetch(imageUrl, { method: 'HEAD', mode: 'no-cors' })
+                .then(() => {
+                    debugLog(`URL accessibility check passed for face ${faceIndex}`);
+                    img.src = imageUrl;
+                })
+                .catch(() => {
+                    debugLog(`URL accessibility check failed for face ${faceIndex}, trying direct load`);
+                    img.src = imageUrl;
+                });
         }
 
         window.onload = function() {
+            debugLog('Window loaded, starting face loading process');
             loadFaces();
         };
 
@@ -242,7 +298,10 @@
             const faceCount = parseInt(getUrlParameter('face_count')) || 0;
             const orderId = getUrlParameter('order_id') || '';
             
+            debugLog('Loading faces', { faceCount, orderId });
+            
             if (faceCount === 0) {
+                debugLog('No faces to load, showing demo message');
                 document.getElementById('faces-container').innerHTML = 
                     '<div style="text-align: center; color: #999;">No faces provided. This appears to be a demo page.</div>';
                 return;
@@ -250,6 +309,10 @@
             
             let facesHtml = '';
             let facesLoaded = 0;
+            
+            // Show all URL parameters for debugging
+            const allParams = new URLSearchParams(window.location.search);
+            debugLog('All URL parameters', Object.fromEntries(allParams));
             
             for (let i = 1; i <= faceCount; i++) {
                 facesHtml += `
@@ -268,6 +331,9 @@
                 const top = parseFloat(getUrlParameter('face' + i + '_top')) || 0;
                 const width = parseFloat(getUrlParameter('face' + i + '_width')) || 1;
                 const height = parseFloat(getUrlParameter('face' + i + '_height')) || 1;
+                const roll = parseFloat(getUrlParameter('face' + i + '_roll')) || 0;
+                
+                debugLog(`Processing face ${i}`, { faceUrl, left, top, width, height, roll });
                 
                 if (faceUrl) {
                     const bbox = { left, top, width, height };
@@ -276,15 +342,13 @@
                         const container = document.getElementById('face-container-' + i);
                         
                         if (croppedUrl) {
-                            const rollAngle = parseFloat(getUrlParameter('face' + i + '_roll')) || 0;
                             let rotationCSS = '';
-
-                            if (Math.abs(rollAngle) > 45) {
-                                if (rollAngle > 135 || rollAngle < -135) {
+                            if (Math.abs(roll) > 45) {
+                                if (roll > 135 || roll < -135) {
                                     rotationCSS = 'transform: rotate(180deg);';
-                                } else if (rollAngle > 45) {
+                                } else if (roll > 45) {
                                     rotationCSS = 'transform: rotate(-90deg);';
-                                } else if (rollAngle < -45) {
+                                } else if (roll < -45) {
                                     rotationCSS = 'transform: rotate(90deg);';
                                 }
                             }
@@ -321,14 +385,14 @@
                                 </div>
                             `;
                         } else {
-                            const rollAngle = parseFloat(getUrlParameter('face' + i + '_roll')) || 0;
+                            // Fallback to original image if cropping fails
                             let rotationCSS = '';
-                            if (Math.abs(rollAngle) > 45) {
-                                if (rollAngle > 135 || rollAngle < -135) {
+                            if (Math.abs(roll) > 45) {
+                                if (roll > 135 || roll < -135) {
                                     rotationCSS = 'transform: rotate(180deg);';
-                                } else if (rollAngle > 45) {
+                                } else if (roll > 45) {
                                     rotationCSS = 'transform: rotate(-90deg);';
-                                } else if (rollAngle < -45) {
+                                } else if (roll < -45) {
                                     rotationCSS = 'transform: rotate(90deg);';
                                 }
                             }
@@ -337,7 +401,7 @@
                                 <div class="face-label">Familiar Face ${i}</div>
                                 <div style="color: orange; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
                                     <img src="${faceUrl}" alt="Face ${i}" class="face-image" style="max-width: 200px; ${rotationCSS}">
-                                    <br><small>Using full image (face too small to crop)</small>
+                                    <br><small>Using full image (cropping failed or face too small)</small>
                                 </div>
                                 
                                 <div class="input-section">
@@ -370,10 +434,21 @@
                         }
                         
                         facesLoaded++;
+                        debugLog(`Face ${i} loaded successfully (${facesLoaded}/${faceCount})`);
                         if (facesLoaded === faceCount) {
-                            console.log('All faces loaded successfully');
+                            debugLog('All faces loaded successfully');
                         }
                     });
+                } else {
+                    debugLog(`No face URL found for face ${i}`);
+                    const container = document.getElementById('face-container-' + i);
+                    container.innerHTML = `
+                        <div class="face-label">Face ${i}</div>
+                        <div style="color: red; padding: 10px;">
+                            No image URL provided for this face
+                        </div>
+                    `;
+                    facesLoaded++;
                 }
             }
         }
@@ -482,9 +557,6 @@
                         <h3>Submission Error</h3>
                         <p>Please try again. Error: ${error.message}</p>
                     </div>
-                `;
-            }
-       }
                 `;
             }
         }
