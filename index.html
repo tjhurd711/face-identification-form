@@ -176,6 +176,17 @@
             object-fit: contain;
             border-radius: 8px;
         }
+        .modal-image-overlay {
+            position: relative;
+            display: inline-block;
+        }
+        .modal-face-box {
+            position: absolute;
+            border: 4px solid #007bff;
+            border-radius: 5px;
+            background: rgba(0, 123, 255, 0.15);
+            pointer-events: none;
+        }
         .close {
             position: absolute;
             top: 15px;
@@ -194,6 +205,56 @@
             color: #666;
             margin-top: 2px;
         }
+        .file-drop-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background-color: #fff;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: all 0.2s ease;
+            margin-top: 8px;
+        }
+        .file-drop-zone:hover {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+        }
+        .file-drop-zone.dragover {
+            border-color: #007bff;
+            background-color: #e7f3ff;
+        }
+        .upload-slot {
+            margin-bottom: 15px;
+        }
+        .drop-text {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .preview {
+            margin-top: 10px;
+        }
+        .preview img {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .remove-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .remove-btn:hover {
+            background-color: #c82333;
+        }
         @media (max-width: 600px) {
             .input-section {
                 flex-direction: column;
@@ -210,10 +271,82 @@
         <h1>Sort By Age - Family Photo Face Recognition</h1>
         <p style="text-align: center; color: #666;">Please provide the birth year for each detected face:</p>
         
-
-        
         <div id="faces-container">
             <div class="loading">Loading faces...</div>
+        </div>
+
+        <!-- Conditional button for when deceased person is not shown -->
+        <div id="no-deceased-button" style="text-align: center; margin: 20px 0; display: none;">
+            <button onclick="handleNoDeceasedShown()" style="
+                background-color: #6c757d; 
+                color: white; 
+                padding: 15px 25px; 
+                border: none; 
+                border-radius: 5px; 
+                font-size: 16px; 
+                cursor: pointer;
+                margin-bottom: 10px;
+            ">
+                Click this button if the person who passed's face did not show up on this form
+            </button>
+            <div style="font-size: 12px; color: #666;">
+                This will mark that the deceased person is not among the detected faces
+            </div>
+        </div>
+
+        <!-- File uploader section (hidden initially) -->
+        <div id="deceased-upload-section" style="display: none; margin: 30px 0; padding: 25px; background-color: #f8f9fa; border-radius: 10px; border: 2px solid #dee2e6;">
+            <h3 style="text-align: center; color: #495057; margin-bottom: 20px;">Manual Deceased Person Photos</h3>
+            <p style="text-align: center; color: #6c757d; margin-bottom: 25px;">
+                Please drop in 4 cropped screenshots of the deceased person's face in the 4 quarters of their life.<br>
+                (For example, someone who passed at 80 years old: a photo at 10ish, 30ish, 50ish, 70ish)
+            </p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 600px; margin: 0 auto;">
+                <div class="upload-slot">
+                    <label style="font-weight: bold; color: #495057;">Quarter 1 (Childhood/Youth)</label>
+                    <div class="file-drop-zone" id="upload-zone-1" ondrop="handleFileDrop(event, 1)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
+                        <input type="file" id="file-input-1" accept="image/*" style="display: none;" onchange="handleFileSelect(event, 1)">
+                        <div class="drop-text">
+                            <div>Drop image here or <span onclick="document.getElementById('file-input-1').click()" style="color: #007bff; cursor: pointer; text-decoration: underline;">click to browse</span></div>
+                        </div>
+                        <div class="preview" id="preview-1"></div>
+                    </div>
+                </div>
+                
+                <div class="upload-slot">
+                    <label style="font-weight: bold; color: #495057;">Quarter 2 (Young Adult)</label>
+                    <div class="file-drop-zone" id="upload-zone-2" ondrop="handleFileDrop(event, 2)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
+                        <input type="file" id="file-input-2" accept="image/*" style="display: none;" onchange="handleFileSelect(event, 2)">
+                        <div class="drop-text">
+                            <div>Drop image here or <span onclick="document.getElementById('file-input-2').click()" style="color: #007bff; cursor: pointer; text-decoration: underline;">click to browse</span></div>
+                        </div>
+                        <div class="preview" id="preview-2"></div>
+                    </div>
+                </div>
+                
+                <div class="upload-slot">
+                    <label style="font-weight: bold; color: #495057;">Quarter 3 (Middle Age)</label>
+                    <div class="file-drop-zone" id="upload-zone-3" ondrop="handleFileDrop(event, 3)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
+                        <input type="file" id="file-input-3" accept="image/*" style="display: none;" onchange="handleFileSelect(event, 3)">
+                        <div class="drop-text">
+                            <div>Drop image here or <span onclick="document.getElementById('file-input-3').click()" style="color: #007bff; cursor: pointer; text-decoration: underline;">click to browse</span></div>
+                        </div>
+                        <div class="preview" id="preview-3"></div>
+                    </div>
+                </div>
+                
+                <div class="upload-slot">
+                    <label style="font-weight: bold; color: #495057;">Quarter 4 (Later Life)</label>
+                    <div class="file-drop-zone" id="upload-zone-4" ondrop="handleFileDrop(event, 4)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
+                        <input type="file" id="file-input-4" accept="image/*" style="display: none;" onchange="handleFileSelect(event, 4)">
+                        <div class="drop-text">
+                            <div>Drop image here or <span onclick="document.getElementById('file-input-4').click()" style="color: #007bff; cursor: pointer; text-decoration: underline;">click to browse</span></div>
+                        </div>
+                        <div class="preview" id="preview-4"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <button class="submit-btn" onclick="submitForm()">Submit</button>
@@ -225,7 +358,7 @@
     <div id="imageModal" class="modal" onclick="closeModal()">
         <span class="close" onclick="closeModal()">&times;</span>
         <div class="modal-content">
-            <img id="modalImg" src="">
+            <div id="modalImageContainer"></div>
         </div>
     </div>
 
@@ -246,315 +379,4 @@
         function handleUnsureChange(faceIndex) {
             const unsureCheckbox = document.getElementById(`face${faceIndex}_unsure`);
             const birthYearInput = document.getElementById(`face${faceIndex}_year`);
-            const errorDiv = document.getElementById(`face${faceIndex}_error`);
-            
-            if (unsureCheckbox.checked) {
-                birthYearInput.disabled = true;
-                birthYearInput.value = '';
-                errorDiv.textContent = '';
-            } else {
-                birthYearInput.disabled = false;
-            }
-        }
-
-        function showDirectImage(imageUrl, bbox, faceIndex, roll) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                
-                img.onload = function() {
-                    // Calculate face box position
-                    const imgWidth = 300; // Display width
-                    const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
-                    
-                    const boxLeft = bbox.left * imgWidth;
-                    const boxTop = bbox.top * imgHeight;
-                    const boxWidth = bbox.width * imgWidth;
-                    const boxHeight = bbox.height * imgHeight;
-                    
-                    let rotationCSS = '';
-                    if (Math.abs(roll) > 45) {
-                        if (roll > 135 || roll < -135) {
-                            rotationCSS = 'transform: rotate(180deg);';
-                        } else if (roll > 45) {
-                            rotationCSS = 'transform: rotate(-90deg);';
-                        } else if (roll < -45) {
-                            rotationCSS = 'transform: rotate(90deg);';
-                        }
-                    }
-                    
-                    const imageHtml = `
-                        <div class="image-overlay" onclick="openModal('${imageUrl}'); return false;">
-                            <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
-                                 style="max-width: 300px; height: auto; ${rotationCSS}"
-                                 onclick="openModal('${imageUrl}'); return false;">
-                            <div class="face-box" style="
-                                left: ${boxLeft}px; 
-                                top: ${boxTop}px; 
-                                width: ${boxWidth}px; 
-                                height: ${boxHeight}px;
-                                pointer-events: none;
-                            "></div>
-                        </div>
-                        <div class="click-hint">
-                            Click image to enlarge
-                        </div>
-                        <div style="font-size: 12px; color: #666; margin-top: 3px;">
-                            Blue box shows detected face area
-                        </div>
-                    `;
-                    
-                    resolve(imageHtml);
-                };
-                
-                img.onerror = function() {
-                    resolve(`<div style="color: red;">Failed to load image</div>`);
-                };
-                
-                img.src = imageUrl;
-            });
-        }
-
-        window.onload = function() {
-            debugLog('Window loaded, starting face loading process');
-            loadFaces();
-        };
-
-        async function loadFaces() {
-            const faceCount = parseInt(getUrlParameter('face_count')) || 0;
-            const orderId = getUrlParameter('order_id') || '';
-            
-            debugLog('Loading faces', { faceCount, orderId });
-            
-            if (faceCount === 0) {
-                debugLog('No faces to load, showing demo message');
-                document.getElementById('faces-container').innerHTML = 
-                    '<div style="text-align: center; color: #999;">No faces provided. This appears to be a demo page.</div>';
-                return;
-            }
-            
-            let facesHtml = '';
-            
-            // Show all URL parameters for debugging
-            const allParams = new URLSearchParams(window.location.search);
-            debugLog('All URL parameters found');
-            
-            for (let i = 1; i <= faceCount; i++) {
-                facesHtml += `
-                    <div class="face-container" id="face-container-${i}">
-                        <div class="face-label">Person ${i}</div>
-                        <div class="loading">Loading face image...</div>
-                    </div>
-                `;
-            }
-            
-            document.getElementById('faces-container').innerHTML = facesHtml;
-            
-            // Load faces one by one
-            for (let i = 1; i <= faceCount; i++) {
-                const faceUrl = getUrlParameter('face' + i + '_url');
-                const left = parseFloat(getUrlParameter('face' + i + '_left')) || 0;
-                const top = parseFloat(getUrlParameter('face' + i + '_top')) || 0;
-                const width = parseFloat(getUrlParameter('face' + i + '_width')) || 1;
-                const height = parseFloat(getUrlParameter('face' + i + '_height')) || 1;
-                const roll = parseFloat(getUrlParameter('face' + i + '_roll')) || 0;
-                
-                debugLog(`Processing face ${i}`, { faceUrl, left, top, width, height, roll });
-                
-                if (faceUrl) {
-                    const bbox = { left, top, width, height };
-                    
-                    try {
-                        const imageHtml = await showDirectImage(faceUrl, bbox, i, roll);
-                        const container = document.getElementById('face-container-' + i);
-                        
-                        container.innerHTML = `
-                            <div class="face-label">Familiar Face ${i}</div>
-                            ${imageHtml}
-                            
-                            <div class="input-section">
-                                <div class="checkbox-section">
-                                    <label class="checkbox-label deceased-checkbox">
-                                        <input type="checkbox" id="face${i}_deceased">
-                                        Check this box if this is the person who has passed
-                                    </label>
-                                </div>
-                                
-                                <div class="birth-year-section">
-                                    <label style="font-weight: bold; margin-bottom: 8px;">
-                                        Enter Birth Year (at least within 3 years):
-                                    </label>
-                                    <input type="number" class="birth-year-input" 
-                                           id="face${i}_year" 
-                                           min="1900" max="2026" 
-                                           placeholder="e.g. 1985">
-                                    <div class="error" id="face${i}_error"></div>
-                                </div>
-                                
-                                <div class="checkbox-section">
-                                    <label class="checkbox-label unsure-checkbox">
-                                        <input type="checkbox" id="face${i}_unsure" onchange="handleUnsureChange(${i})">
-                                        Select this box if you aren't sure of the birth year
-                                    </label>
-                                </div>
-                            </div>
-                        `;
-                        
-                        debugLog(`Face ${i} loaded and rendered successfully`);
-                        
-                    } catch (error) {
-                        const container = document.getElementById('face-container-' + i);
-                        container.innerHTML = `
-                            <div class="face-label">Face ${i}</div>
-                            <div style="color: red; padding: 10px;">
-                                Error loading face image
-                            </div>
-                        `;
-                    }
-                } else {
-                    const container = document.getElementById('face-container-' + i);
-                    container.innerHTML = `
-                        <div class="face-label">Face ${i}</div>
-                        <div style="color: red; padding: 10px;">
-                            No image URL provided for this face
-                        </div>
-                    `;
-                }
-            }
-        }
-
-        function openModal(imageUrl) {
-            try {
-                const modal = document.getElementById('imageModal');
-                const modalImg = document.getElementById('modalImg');
-                if (modal && modalImg) {
-                    modal.style.display = 'block';
-                    modalImg.src = imageUrl;
-                } else {
-                    console.error('Modal elements not found');
-                }
-            } catch (error) {
-                console.error('Error opening modal:', error);
-            }
-        }
-
-        function closeModal() {
-            try {
-                const modal = document.getElementById('imageModal');
-                if (modal) {
-                    modal.style.display = 'none';
-                }
-            } catch (error) {
-                console.error('Error closing modal:', error);
-            }
-        }
-
-        function submitForm() {
-            document.querySelectorAll('.error').forEach(el => el.textContent = '');
-    
-            const faceCount = parseInt(getUrlParameter('face_count')) || 0;
-            const orderId = getUrlParameter('order_id') || '';
-    
-            const birthYears = {};
-            const deceasedFaces = [];
-            const unsureFaces = [];
-            let hasErrors = false;
-    
-            for (let i = 1; i <= faceCount; i++) {
-                const yearInput = document.getElementById('face' + i + '_year');
-                const deceasedCheckbox = document.getElementById('face' + i + '_deceased');
-                const unsureCheckbox = document.getElementById('face' + i + '_unsure');
-                const error = document.getElementById('face' + i + '_error');
-        
-                if (yearInput && deceasedCheckbox && unsureCheckbox && error) {
-                    if (deceasedCheckbox.checked) {
-                        deceasedFaces.push(`person_${i}`);
-                   }
-            
-                   if (unsureCheckbox.checked) {
-                       unsureFaces.push(`person_${i}`);
-                   } else {
-                       const year = parseInt(yearInput.value);
-                       if (!year || year < 1900 || year > 2026) {
-                           error.textContent = 'Please enter a valid birth year (1900-2026) or check "unsure"';
-                           hasErrors = true;
-                       } else {
-                         birthYears[`person_${i}`] = year;
-                       }
-                  }
-             }
-        }
-    
-        if (deceasedFaces.length === 0) {
-            if (!confirm('No one was marked as the deceased person. Is the deceased person not shown in these faces?')) {
-                return;
-            }
-        } else if (deceasedFaces.length > 1) {
-            if (!confirm(`You marked ${deceasedFaces.length} faces as the deceased person. This likely means the same person appears in multiple age ranges. We'll merge these together. Continue?`)) {
-                return;
-            }
-        }
-    
-        if (hasErrors) {
-            return;
-        }
-            
-            const submissionData = {
-                order_id: orderId,
-                birth_years: birthYears,
-                deceased_faces: deceasedFaces,
-                unsure_faces: unsureFaces,
-                submitted_at: new Date().toISOString(),
-                face_count: faceCount
-            };
-
-            submitToS3(submissionData);
-        }
-
-        async function submitToS3(data) {
-            document.getElementById('result').innerHTML = '<div class="loading">Submitting your responses...</div>';
-    
-            try {
-                const orderId = data.order_id;
-        
-                // Upload form data to existing location  
-                const formDataKey = `ff-analysis/${orderId}/form_submission.json`;
-                const formDataUrl = `https://order-by-age-uploads.s3.amazonaws.com/${formDataKey}`;
-        
-                await fetch(formDataUrl, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-        
-                // Create completion flag in new trigger location
-                const completionKey = `second-start/${orderId}/form.complete`;
-                const completionUrl = `https://order-by-age-uploads.s3.amazonaws.com/${completionKey}`;
-        
-                await fetch(completionUrl, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        completed_at: new Date().toISOString(),
-                        deceased_person_identified: data.deceased_faces.length > 0
-                    })
-                });
-        
-                document.getElementById('result').innerHTML = `
-                    <div class="success">
-                        <h3>Thank you!</h3>
-                        <p>Your responses have been submitted successfully.</p>
-                    </div>
-                `;
-        
-            } catch (error) {
-                document.getElementById('result').innerHTML = `
-                    <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px;">
-                        <h3>Submission Error</h3>
-                        <p>Please try again. Error: ${error.message}</p>
-                    </div>
-                `;
-            }
-        }
-    </script>
-</body>
-</html>
+            const
