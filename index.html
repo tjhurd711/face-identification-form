@@ -421,15 +421,29 @@
         }
 
         function openModal(imageUrl) {
-            const modal = document.getElementById('imageModal');
-            const modalImg = document.getElementById('modalImg');
-            modal.style.display = 'block';
-            modalImg.src = imageUrl;
+            try {
+                const modal = document.getElementById('imageModal');
+                const modalImg = document.getElementById('modalImg');
+                if (modal && modalImg) {
+                    modal.style.display = 'block';
+                    modalImg.src = imageUrl;
+                } else {
+                    console.error('Modal elements not found');
+                }
+            } catch (error) {
+                console.error('Error opening modal:', error);
+            }
         }
 
         function closeModal() {
-            const modal = document.getElementById('imageModal');
-            modal.style.display = 'none';
+            try {
+                const modal = document.getElementById('imageModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error closing modal:', error);
+            }
         }
 
         function submitForm() {
