@@ -136,23 +136,63 @@
             font-style: italic;
         }
         .debug-info {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
+            display: none;
         }
         .image-overlay {
             position: relative;
             display: inline-block;
+            cursor: pointer;
         }
         .face-box {
             position: absolute;
             border: 3px solid #007bff;
             border-radius: 5px;
             background: rgba(0, 123, 255, 0.1);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        .modal-content {
+            position: relative;
+            margin: auto;
+            padding: 20px;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        .modal img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        .close:hover {
+            opacity: 0.7;
+        }
+        .click-hint {
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
         }
         @media (max-width: 600px) {
             .input-section {
@@ -170,11 +210,7 @@
         <h1>Sort By Age - Family Photo Face Recognition</h1>
         <p style="text-align: center; color: #666;">Please provide the birth year for each detected face:</p>
         
-        <!-- Debug Info -->
-        <div class="debug-info" id="debug-info">
-            <strong>Debug Information:</strong><br>
-            Loading URL parameters...
-        </div>
+
         
         <div id="faces-container">
             <div class="loading">Loading faces...</div>
@@ -186,16 +222,9 @@
     </div>
 
     <script>
-        // Enhanced debug logging
+        // No-op debug logging for production
         function debugLog(message, data = null) {
-            console.log(`[DEBUG] ${message}`, data);
-            const debugDiv = document.getElementById('debug-info');
-            if (debugDiv) {
-                debugDiv.innerHTML += `<br>${message}`;
-                if (data) {
-                    debugDiv.innerHTML += `: ${JSON.stringify(data)}`;
-                }
-            }
+            // Debug logging disabled
         }
 
         function getUrlParameter(name) {
@@ -253,7 +282,7 @@
                     }
                     
                     const imageHtml = `
-                        <div class="image-overlay">
+                        <div class="image-overlay" onclick="openModal('${faceUrl}')">
                             <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
                                  style="max-width: 300px; height: auto; ${rotationCSS}">
                             <div class="face-box" style="
@@ -263,7 +292,10 @@
                                 height: ${boxHeight}px;
                             "></div>
                         </div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                        <div class="click-hint">
+                            Click image to enlarge
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-top: 3px;">
                             Blue box shows detected face area
                         </div>
                     `;
@@ -390,6 +422,18 @@
             }
             
             debugLog(`Finished processing all ${faceCount} faces`);
+        }
+
+        function openModal(imageUrl) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImg');
+            modal.style.display = 'block';
+            modalImg.src = imageUrl;
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('imageModal');
+            modal.style.display = 'none';
         }
 
         function submitForm() {
