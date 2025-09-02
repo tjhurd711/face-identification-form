@@ -221,6 +221,14 @@
         <div id="result"></div>
     </div>
 
+    <!-- Modal for enlarged images -->
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div class="modal-content">
+            <img id="modalImg" src="">
+        </div>
+    </div>
+
     <script>
         // No-op debug logging for production
         function debugLog(message, data = null) {
@@ -275,7 +283,7 @@
                     }
                     
                     const imageHtml = `
-                        <div class="image-overlay">
+                        <div class="image-overlay" onclick="openModal('${imageUrl}')">
                             <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
                                  style="max-width: 300px; height: auto; ${rotationCSS}">
                             <div class="face-box" style="
@@ -285,7 +293,10 @@
                                 height: ${boxHeight}px;
                             "></div>
                         </div>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                        <div class="click-hint">
+                            Click image to enlarge
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-top: 3px;">
                             Blue box shows detected face area
                         </div>
                     `;
