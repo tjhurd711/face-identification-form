@@ -283,14 +283,16 @@
                     }
                     
                     const imageHtml = `
-                        <div class="image-overlay" onclick="openModal('${imageUrl}')">
+                        <div class="image-overlay" onclick="openModal('${imageUrl}'); return false;">
                             <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
-                                 style="max-width: 300px; height: auto; ${rotationCSS}">
+                                 style="max-width: 300px; height: auto; ${rotationCSS}"
+                                 onclick="openModal('${imageUrl}'); return false;">
                             <div class="face-box" style="
                                 left: ${boxLeft}px; 
                                 top: ${boxTop}px; 
                                 width: ${boxWidth}px; 
                                 height: ${boxHeight}px;
+                                pointer-events: none;
                             "></div>
                         </div>
                         <div class="click-hint">
