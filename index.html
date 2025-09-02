@@ -176,6 +176,17 @@
             object-fit: contain;
             border-radius: 8px;
         }
+        .modal-image-overlay {
+            position: relative;
+            display: inline-block;
+        }
+        .modal-face-box {
+            position: absolute;
+            border: 4px solid #007bff;
+            border-radius: 5px;
+            background: rgba(0, 123, 255, 0.15);
+            pointer-events: none;
+        }
         .close {
             position: absolute;
             top: 15px;
@@ -225,7 +236,7 @@
     <div id="imageModal" class="modal" onclick="closeModal()">
         <span class="close" onclick="closeModal()">&times;</span>
         <div class="modal-content">
-            <img id="modalImg" src="">
+            <div id="modalImageContainer"></div>
         </div>
     </div>
 
@@ -283,10 +294,10 @@
                     }
                     
                     const imageHtml = `
-                        <div class="image-overlay" onclick="openModal('${imageUrl}'); return false;">
+                        <div class="image-overlay" onclick="openModal('${imageUrl}', ${JSON.stringify(bbox)}, '${rotationCSS}'); return false;">
                             <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
                                  style="max-width: 300px; height: auto; ${rotationCSS}"
-                                 onclick="openModal('${imageUrl}'); return false;">
+                                 onclick="openModal('${imageUrl}', ${JSON.stringify(bbox)}, '${rotationCSS}'); return false;">
                             <div class="face-box" style="
                                 left: ${boxLeft}px; 
                                 top: ${boxTop}px; 
@@ -422,13 +433,52 @@
             }
         }
 
-        function openModal(imageUrl) {
+        function openModal(imageUrl, bbox, rotationCSS) {
             try {
                 const modal = document.getElementById('imageModal');
-                const modalImg = document.getElementById('modalImg');
-                if (modal && modalImg) {
-                    modal.style.display = 'block';
-                    modalImg.src = imageUrl;
+                const modalContainer = document.getElementById('modalImageContainer');
+                if (modal && modalContainer) {
+                    // Create a new image element to get dimensions
+                    const img = new Image();
+                    img.onload = function() {
+                        // Calculate modal image size (up to 90vh/90vw)
+                        const maxWidth = window.innerWidth * 0.9;
+                        const maxHeight = window.innerHeight * 0.9;
+                        
+                        let displayWidth = img.naturalWidth;
+                        let displayHeight = img.naturalHeight;
+                        
+                        // Scale down if image is too large
+                        if (displayWidth > maxWidth || displayHeight > maxHeight) {
+                            const widthRatio = maxWidth / displayWidth;
+                            const heightRatio = maxHeight / displayHeight;
+                            const ratio = Math.min(widthRatio, heightRatio);
+                            
+                            displayWidth = displayWidth * ratio;
+                            displayHeight = displayHeight * ratio;
+                        }
+                        
+                        // Calculate face box position for modal
+                        const boxLeft = bbox.left * displayWidth;
+                        const boxTop = bbox.top * displayHeight;
+                        const boxWidth = bbox.width * displayWidth;
+                        const boxHeight = bbox.height * displayHeight;
+                        
+                        modalContainer.innerHTML = `
+                            <div class="modal-image-overlay">
+                                <img src="${imageUrl}" style="width: ${displayWidth}px; height: ${displayHeight}px; ${rotationCSS}">
+                                <div class="modal-face-box" style="
+                                    left: ${boxLeft}px; 
+                                    top: ${boxTop}px; 
+                                    width: ${boxWidth}px; 
+                                    height: ${boxHeight}px;
+                                "></div>
+                            </div>
+                        `;
+                        
+                        modal.style.display = 'block';
+                    };
+                    img.src = imageUrl;
                 } else {
                     console.error('Modal elements not found');
                 }
