@@ -250,17 +250,10 @@
         }
 
         function showDirectImage(imageUrl, bbox, faceIndex, roll) {
-            debugLog(`Showing direct image for face ${faceIndex}`, { imageUrl, bbox, roll });
-            
             return new Promise((resolve) => {
                 const img = new Image();
                 
                 img.onload = function() {
-                    debugLog(`Direct image loaded for face ${faceIndex}`, {
-                        naturalWidth: img.naturalWidth,
-                        naturalHeight: img.naturalHeight
-                    });
-                    
                     // Calculate face box position
                     const imgWidth = 300; // Display width
                     const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
@@ -282,7 +275,7 @@
                     }
                     
                     const imageHtml = `
-                        <div class="image-overlay" onclick="openModal('${faceUrl}')">
+                        <div class="image-overlay">
                             <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
                                  style="max-width: 300px; height: auto; ${rotationCSS}">
                             <div class="face-box" style="
@@ -292,10 +285,7 @@
                                 height: ${boxHeight}px;
                             "></div>
                         </div>
-                        <div class="click-hint">
-                            Click image to enlarge
-                        </div>
-                        <div style="font-size: 12px; color: #666; margin-top: 3px;">
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
                             Blue box shows detected face area
                         </div>
                     `;
@@ -304,7 +294,6 @@
                 };
                 
                 img.onerror = function() {
-                    debugLog(`Direct image failed for face ${faceIndex}`);
                     resolve(`<div style="color: red;">Failed to load image</div>`);
                 };
                 
@@ -400,7 +389,6 @@
                         debugLog(`Face ${i} loaded and rendered successfully`);
                         
                     } catch (error) {
-                        debugLog(`Error loading face ${i}`, error);
                         const container = document.getElementById('face-container-' + i);
                         container.innerHTML = `
                             <div class="face-label">Face ${i}</div>
@@ -410,7 +398,6 @@
                         `;
                     }
                 } else {
-                    debugLog(`No face URL found for face ${i}`);
                     const container = document.getElementById('face-container-' + i);
                     container.innerHTML = `
                         <div class="face-label">Face ${i}</div>
@@ -420,8 +407,6 @@
                     `;
                 }
             }
-            
-            debugLog(`Finished processing all ${faceCount} faces`);
         }
 
         function openModal(imageUrl) {
