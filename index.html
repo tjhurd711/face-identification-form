@@ -60,6 +60,16 @@
             align-items: center;
             min-width: 150px;
         }
+        .skin-tone-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 180px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
         .birth-year-section {
             display: flex;
             flex-direction: column;
@@ -97,6 +107,18 @@
             margin-right: 8px;
             margin-top: 2px;
             flex-shrink: 0;
+        }
+        .radio-label {
+            display: flex;
+            align-items: center;
+            text-align: left;
+            font-size: 14px;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+        .radio-label input[type="radio"] {
+            margin-right: 8px;
+            cursor: pointer;
         }
         .deceased-checkbox {
             color: #d63384;
@@ -247,7 +269,7 @@
                 flex-direction: column;
                 gap: 15px;
             }
-            .checkbox-section {
+            .checkbox-section, .skin-tone-section {
                 min-width: auto;
             }
         }
@@ -484,6 +506,20 @@
                                     </label>
                                 </div>
                                 
+                                <div class="skin-tone-section">
+                                    <label style="font-weight: bold; margin-bottom: 8px; text-align: center;">
+                                        Skin tone for age estimation:
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="face${i}_skin_tone" value="light" checked>
+                                        Light skin (Caucasian)
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="face${i}_skin_tone" value="dark">
+                                        Medium/Darker skin (all others)
+                                    </label>
+                                </div>
+                                
                                 <div class="birth-year-section">
                                     <label style="font-weight: bold; margin-bottom: 8px;">
                                         Enter Birth Year (at least within 3 years):
@@ -686,52 +722,60 @@
             const birthYears = {};
             const deceasedFaces = [];
             const unsureFaces = [];
+            const skinTones = {};
             let hasErrors = false;
     
             for (let i = 1; i <= faceCount; i++) {
                 const yearInput = document.getElementById('face' + i + '_year');
                 const deceasedCheckbox = document.getElementById('face' + i + '_deceased');
                 const unsureCheckbox = document.getElementById('face' + i + '_unsure');
+                const skinToneRadio = document.querySelector(`input[name="face${i}_skin_tone"]:checked`);
                 const error = document.getElementById('face' + i + '_error');
         
                 if (yearInput && deceasedCheckbox && unsureCheckbox && error) {
                     if (deceasedCheckbox.checked) {
                         deceasedFaces.push(`person_${i}`);
-                   }
+                    }
+                    
+                    // Collect skin tone selection
+                    if (skinToneRadio) {
+                        skinTones[`person_${i}`] = skinToneRadio.value; // "light" or "dark"
+                    }
             
-                   if (unsureCheckbox.checked) {
-                       unsureFaces.push(`person_${i}`);
-                   } else {
-                       const year = parseInt(yearInput.value);
-                       if (!year || year < 1900 || year > 2026) {
-                           error.textContent = 'Please enter a valid birth year (1900-2026) or check "unsure"';
-                           hasErrors = true;
-                       } else {
-                         birthYears[`person_${i}`] = year;
-                       }
-                  }
-             }
-        }
+                    if (unsureCheckbox.checked) {
+                        unsureFaces.push(`person_${i}`);
+                    } else {
+                        const year = parseInt(yearInput.value);
+                        if (!year || year < 1900 || year > 2026) {
+                            error.textContent = 'Please enter a valid birth year (1900-2026) or check "unsure"';
+                            hasErrors = true;
+                        } else {
+                            birthYears[`person_${i}`] = year;
+                        }
+                    }
+                }
+            }
     
-        if (deceasedFaces.length === 0 && !deceasedNotShownFlag) {
-            if (!confirm('No one was marked as the deceased person. Is the deceased person not shown in these faces?')) {
+            if (deceasedFaces.length === 0 && !deceasedNotShownFlag) {
+                if (!confirm('No one was marked as the deceased person. Is the deceased person not shown in these faces?')) {
+                    return;
+                }
+            } else if (deceasedFaces.length > 1) {
+                if (!confirm(`You marked ${deceasedFaces.length} faces as the deceased person. This likely means the same person appears in multiple age ranges. We'll merge these together. Continue?`)) {
+                    return;
+                }
+            }
+    
+            if (hasErrors) {
                 return;
             }
-        } else if (deceasedFaces.length > 1) {
-            if (!confirm(`You marked ${deceasedFaces.length} faces as the deceased person. This likely means the same person appears in multiple age ranges. We'll merge these together. Continue?`)) {
-                return;
-            }
-        }
-    
-        if (hasErrors) {
-            return;
-        }
             
             const submissionData = {
                 order_id: orderId,
                 birth_years: birthYears,
                 deceased_faces: deceasedFaces,
                 unsure_faces: unsureFaces,
+                skin_tones: skinTones,
                 deceased_not_shown: deceasedNotShownFlag,
                 submitted_at: new Date().toISOString(),
                 face_count: faceCount
