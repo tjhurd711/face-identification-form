@@ -871,7 +871,7 @@
                 });
         
                 // Create completion flag in new trigger location
-                const completionKey = `second-start/${orderId}/form.complete`;
+                const completionKey = `form-handler/${orderId}/form.complete`;
                 const completionUrl = `https://order-by-age-uploads.s3.amazonaws.com/${completionKey}`;
         
                 await fetch(completionUrl, {
