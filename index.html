@@ -468,25 +468,37 @@
                 const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
                 
                 let rotationCSS = '';
+                let actualRotation = 0;
                 let rotatedBbox = bbox;
                 
-                // Check if significant rotation is needed
-                if (Math.abs(roll) > 45) {
-                    if (roll > 135 || roll < -135) {
-                        rotationCSS = 'transform: rotate(180deg);';
-                        // For 180-degree rotation, calculate rotated bounding box
-                        rotatedBbox = calculateRotatedBoundingBox(bbox, 180, imgWidth, imgHeight);
-                    } else if (roll > 45) {
-                        rotationCSS = 'transform: rotate(-90deg);';
-                        // For -90-degree rotation, calculate rotated bounding box
-                        rotatedBbox = calculateRotatedBoundingBox(bbox, -90, imgWidth, imgHeight);
-                    } else if (roll < -45) {
-                        rotationCSS = 'transform: rotate(90deg);';
-                        // For 90-degree rotation, calculate rotated bounding box
-                        rotatedBbox = calculateRotatedBoundingBox(bbox, 90, imgWidth, imgHeight);
-                    }
+                // Normalize roll angle to 0-360 range
+                let normalizedRoll = roll;
+                while (normalizedRoll < 0) normalizedRoll += 360;
+                while (normalizedRoll >= 360) normalizedRoll -= 360;
+                
+                // Determine rotation needed to make image upright
+                if (normalizedRoll >= 45 && normalizedRoll < 135) {
+                    // Image is rotated ~90 degrees clockwise, rotate counter-clockwise to fix
+                    rotationCSS = 'transform: rotate(-90deg);';
+                    actualRotation = -90;
+                } else if (normalizedRoll >= 135 && normalizedRoll < 225) {
+                    // Image is rotated ~180 degrees, rotate 180 to fix
+                    rotationCSS = 'transform: rotate(180deg);';
+                    actualRotation = 180;
+                } else if (normalizedRoll >= 225 && normalizedRoll < 315) {
+                    // Image is rotated ~270 degrees clockwise (or 90 counter-clockwise), rotate clockwise to fix
+                    rotationCSS = 'transform: rotate(90deg);';
+                    actualRotation = 90;
                 } else {
-                    // No significant rotation needed, use original coordinates
+                    // Image is roughly upright (315-45 degrees), no rotation needed
+                    actualRotation = 0;
+                }
+                
+                // Calculate bounding box for the rotation we're applying
+                if (actualRotation !== 0) {
+                    rotatedBbox = calculateRotatedBoundingBox(bbox, actualRotation, imgWidth, imgHeight);
+                } else {
+                    // No rotation, use original coordinates
                     rotatedBbox = {
                         left: bbox.left * imgWidth,
                         top: bbox.top * imgHeight,
@@ -512,7 +524,7 @@
                         Click image to enlarge
                     </div>
                     <div style="font-size: 12px; color: #666; margin-top: 3px;">
-                        Blue box shows detected face area
+                        Blue box shows detected face area (Roll: ${roll.toFixed(1)}°, Applied: ${actualRotation}°)
                     </div>
                 `;
                 
