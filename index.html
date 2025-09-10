@@ -417,47 +417,6 @@
         }
     }
 
-    function calculateRotatedBoundingBox(bbox, roll, imgWidth, imgHeight) {
-        // Original bounding box coordinates
-        const originalLeft = bbox.left * imgWidth;
-        const originalTop = bbox.top * imgHeight;
-        const originalWidth = bbox.width * imgWidth;
-        const originalHeight = bbox.height * imgHeight;
-        
-        // Center of the original bounding box
-        const centerX = originalLeft + originalWidth / 2;
-        const centerY = originalTop + originalHeight / 2;
-        
-        // Center of the image
-        const imageCenterX = imgWidth / 2;
-        const imageCenterY = imgHeight / 2;
-        
-        // Convert roll to radians
-        const rollRad = (roll * Math.PI) / 180;
-        
-        // Calculate the rotated center position
-        const cosRoll = Math.cos(-rollRad); // Negative because we're rotating the coordinate system
-        const sinRoll = Math.sin(-rollRad);
-        
-        // Translate to origin, rotate, then translate back
-        const translatedX = centerX - imageCenterX;
-        const translatedY = centerY - imageCenterY;
-        
-        const rotatedCenterX = imageCenterX + (translatedX * cosRoll - translatedY * sinRoll);
-        const rotatedCenterY = imageCenterY + (translatedX * sinRoll + translatedY * cosRoll);
-        
-        // Calculate new bounding box position
-        const newLeft = rotatedCenterX - originalWidth / 2;
-        const newTop = rotatedCenterY - originalHeight / 2;
-        
-        return {
-            left: newLeft,
-            top: newTop,
-            width: originalWidth,
-            height: originalHeight
-        };
-    }
-
     function showDirectImage(imageUrl, bbox, faceIndex, roll) {
         return new Promise((resolve) => {
             const img = new Image();
@@ -467,55 +426,27 @@
                 const imgWidth = 300; // Display width
                 const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
                 
-                let rotationCSS = '';
-                let actualRotation = 0;
-                let rotatedBbox = bbox;
+                // Images are already properly oriented by Lambda's ImageOps.exif_transpose()
+                // No CSS rotation needed - just use bbox coordinates directly
+                const faceBox = {
+                    left: bbox.left * imgWidth,
+                    top: bbox.top * imgHeight,
+                    width: bbox.width * imgWidth,
+                    height: bbox.height * imgHeight
+                };
                 
-                console.log(`Face ${faceIndex}: Original roll=${roll}, imgWidth=${imgWidth}, imgHeight=${imgHeight}`);
-                console.log(`Face ${faceIndex}: Original bbox=`, bbox);
-                
-                // Try different approach - use the roll angle directly as the correction needed
-                // Round to nearest 90 degrees for clean rotations
-                if (Math.abs(roll) > 45) {
-                    if (roll > 45 && roll <= 135) {
-                        rotationCSS = 'transform: rotate(90deg);';
-                        actualRotation = 90;
-                    } else if (roll > 135 || roll < -135) {
-                        rotationCSS = 'transform: rotate(180deg);';
-                        actualRotation = 180;
-                    } else if (roll < -45 && roll >= -135) {
-                        rotationCSS = 'transform: rotate(-90deg);';
-                        actualRotation = -90;
-                    }
-                }
-                
-                console.log(`Face ${faceIndex}: Applied rotation=${actualRotation}`);
-                
-                // Calculate bounding box for the rotation we're applying
-                if (actualRotation !== 0) {
-                    rotatedBbox = calculateRotatedBoundingBox(bbox, actualRotation, imgWidth, imgHeight);
-                    console.log(`Face ${faceIndex}: Rotated bbox=`, rotatedBbox);
-                } else {
-                    // No rotation, use original coordinates
-                    rotatedBbox = {
-                        left: bbox.left * imgWidth,
-                        top: bbox.top * imgHeight,
-                        width: bbox.width * imgWidth,
-                        height: bbox.height * imgHeight
-                    };
-                    console.log(`Face ${faceIndex}: No rotation bbox=`, rotatedBbox);
-                }
+                console.log(`Face ${faceIndex}: Using pre-corrected image, bbox=`, faceBox);
                 
                 const imageHtml = `
                     <div class="image-overlay" onclick="openModal('${imageUrl}'); return false;">
                         <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
-                               style="max-width: 300px; height: auto; ${rotationCSS}"
+                               style="max-width: 300px; height: auto;"
                                onclick="openModal('${imageUrl}'); return false;">
                         <div class="face-box" style="
-                            left: ${rotatedBbox.left}px; 
-                            top: ${rotatedBbox.top}px; 
-                            width: ${rotatedBbox.width}px; 
-                            height: ${rotatedBbox.height}px;
+                            left: ${faceBox.left}px; 
+                            top: ${faceBox.top}px; 
+                            width: ${faceBox.width}px; 
+                            height: ${faceBox.height}px;
                             pointer-events: none;
                         "></div>
                     </div>
@@ -524,7 +455,7 @@
                     </div>
                     <div style="font-size: 12px; color: #666; margin-top: 3px;">
                         Blue box shows detected face area<br>
-                        DEBUG: Roll=${roll.toFixed(1)}°, Applied=${actualRotation}°, BBox=[${rotatedBbox.left.toFixed(1)}, ${rotatedBbox.top.toFixed(1)}, ${rotatedBbox.width.toFixed(1)}, ${rotatedBbox.height.toFixed(1)}]
+                        Original Roll: ${roll.toFixed(1)}° (corrected by server)
                     </div>
                 `;
                 
@@ -976,6 +907,6 @@
             `;
         }
     }
-</script>
+    </script>
 </body>
 </html>
