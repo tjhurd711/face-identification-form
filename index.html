@@ -286,15 +286,6 @@
         .remove-btn:hover {
             background-color: #c82333;
         }
-        .debug-info {
-            font-size: 11px;
-            color: #666;
-            margin-top: 3px;
-            font-family: monospace;
-            background: rgba(0,0,0,0.05);
-            padding: 3px;
-            border-radius: 3px;
-        }
         @media (max-width: 600px) {
             .input-section {
                 flex-direction: column;
@@ -426,164 +417,114 @@
         }
     }
 
-    // Improved rotation and bounding box calculation
-    function transformBoundingBox(bbox, rotation, originalWidth, originalHeight) {
-        // Convert normalized coordinates to pixel coordinates
-        let x = bbox.left * originalWidth;
-        let y = bbox.top * originalHeight;
-        let width = bbox.width * originalWidth;
-        let height = bbox.height * originalHeight;
+    function calculateRotatedBoundingBox(bbox, roll, imgWidth, imgHeight) {
+        // Original bounding box coordinates
+        const originalLeft = bbox.left * imgWidth;
+        const originalTop = bbox.top * imgHeight;
+        const originalWidth = bbox.width * imgWidth;
+        const originalHeight = bbox.height * imgHeight;
         
-        // Calculate center point of bounding box
-        let centerX = x + width / 2;
-        let centerY = y + height / 2;
+        // Center of the original bounding box
+        const centerX = originalLeft + originalWidth / 2;
+        const centerY = originalTop + originalHeight / 2;
         
-        // Apply rotation transformation
-        const cos = Math.cos(rotation * Math.PI / 180);
-        const sin = Math.sin(rotation * Math.PI / 180);
+        // Center of the image
+        const imageCenterX = imgWidth / 2;
+        const imageCenterY = imgHeight / 2;
         
-        // Rotate around image center
-        const imageCenterX = originalWidth / 2;
-        const imageCenterY = originalHeight / 2;
+        // Convert roll to radians
+        const rollRad = (roll * Math.PI) / 180;
         
-        // Translate to origin, rotate, translate back
+        // Calculate the rotated center position
+        const cosRoll = Math.cos(-rollRad); // Negative because we're rotating the coordinate system
+        const sinRoll = Math.sin(-rollRad);
+        
+        // Translate to origin, rotate, then translate back
         const translatedX = centerX - imageCenterX;
         const translatedY = centerY - imageCenterY;
         
-        const rotatedX = translatedX * cos - translatedY * sin;
-        const rotatedY = translatedX * sin + translatedY * cos;
+        const rotatedCenterX = imageCenterX + (translatedX * cosRoll - translatedY * sinRoll);
+        const rotatedCenterY = imageCenterY + (translatedX * sinRoll + translatedY * cosRoll);
         
-        const newCenterX = rotatedX + imageCenterX;
-        const newCenterY = rotatedY + imageCenterY;
-        
-        // For 90-degree rotations, also swap width/height if needed
-        let newWidth = width;
-        let newHeight = height;
-        
-        if (Math.abs(rotation) === 90 || Math.abs(rotation) === 270) {
-            // Adjust for rotated image dimensions
-            const temp = newWidth;
-            newWidth = newHeight;
-            newHeight = temp;
-        }
+        // Calculate new bounding box position
+        const newLeft = rotatedCenterX - originalWidth / 2;
+        const newTop = rotatedCenterY - originalHeight / 2;
         
         return {
-            left: newCenterX - newWidth / 2,
-            top: newCenterY - newHeight / 2,
-            width: newWidth,
-            height: newHeight
+            left: newLeft,
+            top: newTop,
+            width: originalWidth,
+            height: originalHeight
         };
-    }
-
-    function determineImageRotation(roll, imageUrl) {
-        // More robust rotation detection
-        // First check if roll angle suggests a clear rotation need
-        let rotation = 0;
-        
-        // Normalize roll to -180 to 180 range
-        const normalizedRoll = ((roll % 360) + 360) % 360;
-        const adjustedRoll = normalizedRoll > 180 ? normalizedRoll - 360 : normalizedRoll;
-        
-        // Apply rotation based on roll with wider thresholds
-        if (adjustedRoll > 60 && adjustedRoll <= 120) {
-            rotation = -90; // Counter-rotate
-        } else if (adjustedRoll > 120 || adjustedRoll < -120) {
-            rotation = 180;
-        } else if (adjustedRoll < -60 && adjustedRoll >= -120) {
-            rotation = 90;
-        }
-        
-        return rotation;
     }
 
     function showDirectImage(imageUrl, bbox, faceIndex, roll) {
         return new Promise((resolve) => {
             const img = new Image();
             
-            // Prevent EXIF auto-rotation by drawing to canvas first
             img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
+                // Calculate face box position
+                const imgWidth = 300; // Display width
+                const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
                 
-                // Determine if we need to apply rotation
-                const rotation = determineImageRotation(roll, imageUrl);
+                let rotationCSS = '';
+                let actualRotation = 0;
+                let rotatedBbox = bbox;
                 
-                let displayWidth, displayHeight;
-                let rotatedBbox;
-                
-                if (Math.abs(rotation) === 90 || Math.abs(rotation) === 270) {
-                    // Swap dimensions for 90/270 degree rotations
-                    canvas.width = img.naturalHeight;
-                    canvas.height = img.naturalWidth;
-                    displayWidth = Math.min(300, img.naturalHeight);
-                    displayHeight = (img.naturalWidth / img.naturalHeight) * displayWidth;
-                } else {
-                    canvas.width = img.naturalWidth;
-                    canvas.height = img.naturalHeight;
-                    displayWidth = Math.min(300, img.naturalWidth);
-                    displayHeight = (img.naturalHeight / img.naturalWidth) * displayWidth;
-                }
-                
-                // Apply rotation to canvas
-                ctx.save();
-                ctx.translate(canvas.width / 2, canvas.height / 2);
-                ctx.rotate(rotation * Math.PI / 180);
-                ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-                ctx.restore();
-                
-                // Transform bounding box coordinates
-                if (rotation !== 0) {
-                    rotatedBbox = transformBoundingBox(bbox, rotation, img.naturalWidth, img.naturalHeight);
-                    
-                    // Scale to display size with correct dimensions
-                    const scaleX = displayWidth / (Math.abs(rotation) === 90 || Math.abs(rotation) === 270 ? img.naturalHeight : img.naturalWidth);
-                    const scaleY = displayHeight / (Math.abs(rotation) === 90 || Math.abs(rotation) === 270 ? img.naturalWidth : img.naturalHeight);
-                    
-                    rotatedBbox = {
-                        left: rotatedBbox.left * scaleX,
-                        top: rotatedBbox.top * scaleY,
-                        width: rotatedBbox.width * scaleX,
-                        height: rotatedBbox.height * scaleY
-                    };
-                } else {
-                    // No rotation, just scale the original bbox
-                    const scaleX = displayWidth / img.naturalWidth;
-                    const scaleY = displayHeight / img.naturalHeight;
-                    
-                    rotatedBbox = {
-                        left: bbox.left * img.naturalWidth * scaleX,
-                        top: bbox.top * img.naturalHeight * scaleY,
-                        width: bbox.width * img.naturalWidth * scaleX,
-                        height: bbox.height * img.naturalHeight * scaleY
-                    };
-                }
-                
-                // Convert canvas to data URL for display
-                const rotatedImageUrl = canvas.toDataURL('image/jpeg', 0.9);
-                
-                console.log(`Face ${faceIndex}: Roll=${roll.toFixed(1)}°, Applied=${rotation}°`);
+                console.log(`Face ${faceIndex}: Original roll=${roll}, imgWidth=${imgWidth}, imgHeight=${imgHeight}`);
                 console.log(`Face ${faceIndex}: Original bbox=`, bbox);
-                console.log(`Face ${faceIndex}: Transformed bbox=`, rotatedBbox);
+                
+                // Try different approach - use the roll angle directly as the correction needed
+                // Round to nearest 90 degrees for clean rotations
+                if (Math.abs(roll) > 45) {
+                    if (roll > 45 && roll <= 135) {
+                        rotationCSS = 'transform: rotate(90deg);';
+                        actualRotation = 90;
+                    } else if (roll > 135 || roll < -135) {
+                        rotationCSS = 'transform: rotate(180deg);';
+                        actualRotation = 180;
+                    } else if (roll < -45 && roll >= -135) {
+                        rotationCSS = 'transform: rotate(-90deg);';
+                        actualRotation = -90;
+                    }
+                }
+                
+                console.log(`Face ${faceIndex}: Applied rotation=${actualRotation}`);
+                
+                // Calculate bounding box for the rotation we're applying
+                if (actualRotation !== 0) {
+                    rotatedBbox = calculateRotatedBoundingBox(bbox, actualRotation, imgWidth, imgHeight);
+                    console.log(`Face ${faceIndex}: Rotated bbox=`, rotatedBbox);
+                } else {
+                    // No rotation, use original coordinates
+                    rotatedBbox = {
+                        left: bbox.left * imgWidth,
+                        top: bbox.top * imgHeight,
+                        width: bbox.width * imgWidth,
+                        height: bbox.height * imgHeight
+                    };
+                    console.log(`Face ${faceIndex}: No rotation bbox=`, rotatedBbox);
+                }
                 
                 const imageHtml = `
-                    <div class="image-overlay" onclick="openModal('${rotatedImageUrl}'); return false;">
-                        <img src="${rotatedImageUrl}" alt="Full Image ${faceIndex}" 
-                               style="width: ${displayWidth}px; height: ${displayHeight}px;"
-                               onclick="openModal('${rotatedImageUrl}'); return false;">
+                    <div class="image-overlay" onclick="openModal('${imageUrl}'); return false;">
+                        <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
+                               style="max-width: 300px; height: auto; ${rotationCSS}"
+                               onclick="openModal('${imageUrl}'); return false;">
                         <div class="face-box" style="
-                            left: ${Math.max(0, rotatedBbox.left)}px; 
-                            top: ${Math.max(0, rotatedBbox.top)}px; 
-                            width: ${Math.max(10, rotatedBbox.width)}px; 
-                            height: ${Math.max(10, rotatedBbox.height)}px;
+                            left: ${rotatedBbox.left}px; 
+                            top: ${rotatedBbox.top}px; 
+                            width: ${rotatedBbox.width}px; 
+                            height: ${rotatedBbox.height}px;
                             pointer-events: none;
                         "></div>
                     </div>
                     <div class="click-hint">
                         Click image to enlarge
                     </div>
-                    <div class="debug-info">
-                        Roll: ${roll.toFixed(1)}° → Applied: ${rotation}°<br>
-                        Box: [${rotatedBbox.left.toFixed(1)}, ${rotatedBbox.top.toFixed(1)}, ${rotatedBbox.width.toFixed(1)}, ${rotatedBbox.height.toFixed(1)}]
+                    <div style="font-size: 12px; color: #666; margin-top: 3px;">
+                        Blue box shows detected face area<br>
+                        DEBUG: Roll=${roll.toFixed(1)}°, Applied=${actualRotation}°, BBox=[${rotatedBbox.left.toFixed(1)}, ${rotatedBbox.top.toFixed(1)}, ${rotatedBbox.width.toFixed(1)}, ${rotatedBbox.height.toFixed(1)}]
                     </div>
                 `;
                 
@@ -594,8 +535,6 @@
                 resolve(`<div style="color: red;">Failed to load image</div>`);
             };
             
-            // Disable EXIF auto-rotation
-            img.style.imageOrientation = 'none';
             img.src = imageUrl;
         });
     }
@@ -694,7 +633,7 @@
                     container.innerHTML = `
                         <div class="face-label">Face ${i}</div>
                         <div style="color: red; padding: 10px;">
-                            Error loading face image: ${error.message}
+                            Error loading face image
                         </div>
                     `;
                 }
