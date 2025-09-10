@@ -417,6 +417,47 @@
         }
     }
 
+    function calculateRotatedBoundingBox(bbox, roll, imgWidth, imgHeight) {
+        // Original bounding box coordinates
+        const originalLeft = bbox.left * imgWidth;
+        const originalTop = bbox.top * imgHeight;
+        const originalWidth = bbox.width * imgWidth;
+        const originalHeight = bbox.height * imgHeight;
+        
+        // Center of the original bounding box
+        const centerX = originalLeft + originalWidth / 2;
+        const centerY = originalTop + originalHeight / 2;
+        
+        // Center of the image
+        const imageCenterX = imgWidth / 2;
+        const imageCenterY = imgHeight / 2;
+        
+        // Convert roll to radians
+        const rollRad = (roll * Math.PI) / 180;
+        
+        // Calculate the rotated center position
+        const cosRoll = Math.cos(-rollRad); // Negative because we're rotating the coordinate system
+        const sinRoll = Math.sin(-rollRad);
+        
+        // Translate to origin, rotate, then translate back
+        const translatedX = centerX - imageCenterX;
+        const translatedY = centerY - imageCenterY;
+        
+        const rotatedCenterX = imageCenterX + (translatedX * cosRoll - translatedY * sinRoll);
+        const rotatedCenterY = imageCenterY + (translatedX * sinRoll + translatedY * cosRoll);
+        
+        // Calculate new bounding box position
+        const newLeft = rotatedCenterX - originalWidth / 2;
+        const newTop = rotatedCenterY - originalHeight / 2;
+        
+        return {
+            left: newLeft,
+            top: newTop,
+            width: originalWidth,
+            height: originalHeight
+        };
+    }
+
     function showDirectImage(imageUrl, bbox, faceIndex, roll) {
         return new Promise((resolve) => {
             const img = new Image();
@@ -426,20 +467,32 @@
                 const imgWidth = 300; // Display width
                 const imgHeight = (img.naturalHeight / img.naturalWidth) * imgWidth;
                 
-                const boxLeft = bbox.left * imgWidth;
-                const boxTop = bbox.top * imgHeight;
-                const boxWidth = bbox.width * imgWidth;
-                const boxHeight = bbox.height * imgHeight;
-                
                 let rotationCSS = '';
+                let rotatedBbox = bbox;
+                
+                // Check if significant rotation is needed
                 if (Math.abs(roll) > 45) {
                     if (roll > 135 || roll < -135) {
                         rotationCSS = 'transform: rotate(180deg);';
+                        // For 180-degree rotation, calculate rotated bounding box
+                        rotatedBbox = calculateRotatedBoundingBox(bbox, 180, imgWidth, imgHeight);
                     } else if (roll > 45) {
                         rotationCSS = 'transform: rotate(-90deg);';
+                        // For -90-degree rotation, calculate rotated bounding box
+                        rotatedBbox = calculateRotatedBoundingBox(bbox, -90, imgWidth, imgHeight);
                     } else if (roll < -45) {
                         rotationCSS = 'transform: rotate(90deg);';
+                        // For 90-degree rotation, calculate rotated bounding box
+                        rotatedBbox = calculateRotatedBoundingBox(bbox, 90, imgWidth, imgHeight);
                     }
+                } else {
+                    // No significant rotation needed, use original coordinates
+                    rotatedBbox = {
+                        left: bbox.left * imgWidth,
+                        top: bbox.top * imgHeight,
+                        width: bbox.width * imgWidth,
+                        height: bbox.height * imgHeight
+                    };
                 }
                 
                 const imageHtml = `
@@ -448,10 +501,10 @@
                                style="max-width: 300px; height: auto; ${rotationCSS}"
                                onclick="openModal('${imageUrl}'); return false;">
                         <div class="face-box" style="
-                            left: ${boxLeft}px; 
-                            top: ${boxTop}px; 
-                            width: ${boxWidth}px; 
-                            height: ${boxHeight}px;
+                            left: ${rotatedBbox.left}px; 
+                            top: ${rotatedBbox.top}px; 
+                            width: ${rotatedBbox.width}px; 
+                            height: ${rotatedBbox.height}px;
                             pointer-events: none;
                         "></div>
                     </div>
