@@ -442,6 +442,173 @@
         }
     }
 
+    // NEW VALIDATION FUNCTIONS
+    function validateDeceasedBirthYears() {
+        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+        const deceasedFaces = [];
+        const deceasedBirthYears = [];
+        
+        // Collect all deceased faces and their birth years
+        for (let i = 1; i <= faceCount; i++) {
+            const deceasedCheckbox = document.getElementById(`face${i}_deceased`);
+            const birthYearInput = document.getElementById(`face${i}_year`);
+            const unsureCheckbox = document.getElementById(`face${i}_unsure`);
+            
+            if (deceasedCheckbox && deceasedCheckbox.checked) {
+                deceasedFaces.push(i);
+                
+                // Only check birth year if not marked as unsure
+                if (!unsureCheckbox.checked && birthYearInput && birthYearInput.value) {
+                    const birthYear = parseInt(birthYearInput.value);
+                    if (birthYear >= 1900 && birthYear <= 2026) {
+                        deceasedBirthYears.push({
+                            faceIndex: i,
+                            birthYear: birthYear
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Check for conflicts only if we have multiple deceased faces with birth years
+        if (deceasedFaces.length > 1 && deceasedBirthYears.length > 1) {
+            const uniqueBirthYears = [...new Set(deceasedBirthYears.map(item => item.birthYear))];
+            
+            if (uniqueBirthYears.length > 1) {
+                // Conflict detected!
+                const conflictMessage = deceasedBirthYears.map(item => 
+                    `Person ${item.faceIndex}: ${item.birthYear}`
+                ).join('\n');
+                
+                alert(`⚠️ Birth Year Conflict Detected!\n\nYou marked multiple people as deceased but gave them different birth years:\n\n${conflictMessage}\n\nSince these represent the same person at different ages, they should have the same birth year. Please correct this before submitting.`);
+                
+                // Highlight the conflicting inputs
+                deceasedBirthYears.forEach(item => {
+                    const input = document.getElementById(`face${item.faceIndex}_year`);
+                    if (input) {
+                        input.style.border = '3px solid red';
+                        input.style.backgroundColor = '#ffe6e6';
+                    }
+                });
+                
+                return false; // Prevent submission
+            }
+        }
+        
+        // Clear any previous conflict highlighting
+        for (let i = 1; i <= faceCount; i++) {
+            const input = document.getElementById(`face${i}_year`);
+            if (input) {
+                input.style.border = '';
+                input.style.backgroundColor = '';
+            }
+        }
+        
+        return true; // Validation passed
+    }
+
+    function setupDeceasedValidation() {
+        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+        
+        for (let i = 1; i <= faceCount; i++) {
+            const deceasedCheckbox = document.getElementById(`face${i}_deceased`);
+            const birthYearInput = document.getElementById(`face${i}_year`);
+            
+            if (deceasedCheckbox) {
+                deceasedCheckbox.addEventListener('change', () => {
+                    setTimeout(validateDeceasedBirthYears, 100);
+                });
+            }
+            
+            if (birthYearInput) {
+                birthYearInput.addEventListener('input', () => {
+                    setTimeout(validateDeceasedBirthYears, 100);
+                });
+            }
+        }
+    }
+
+    function syncDeceasedBirthYears(changedFaceIndex) {
+        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+        const changedInput = document.getElementById(`face${changedFaceIndex}_year`);
+        const changedCheckbox = document.getElementById(`face${changedFaceIndex}_deceased`);
+        const changedUnsure = document.getElementById(`face${changedFaceIndex}_unsure`);
+        
+        // Only sync if this face is deceased, not unsure, and has a valid birth year
+        if (!changedCheckbox.checked || changedUnsure.checked || !changedInput.value) {
+            return;
+        }
+        
+        const newBirthYear = parseInt(changedInput.value);
+        if (newBirthYear < 1900 || newBirthYear > 2026) {
+            return;
+        }
+        
+        // Find all other deceased faces and update their birth years
+        let syncedCount = 0;
+        for (let i = 1; i <= faceCount; i++) {
+            if (i === changedFaceIndex) continue;
+            
+            const otherCheckbox = document.getElementById(`face${i}_deceased`);
+            const otherInput = document.getElementById(`face${i}_year`);
+            const otherUnsure = document.getElementById(`face${i}_unsure`);
+            
+            if (otherCheckbox && otherCheckbox.checked && !otherUnsure.checked) {
+                const currentValue = parseInt(otherInput.value) || 0;
+                
+                // Only update if it's empty or different
+                if (!otherInput.value || currentValue !== newBirthYear) {
+                    otherInput.value = newBirthYear;
+                    otherInput.style.border = '2px solid green';
+                    otherInput.style.backgroundColor = '#e6ffe6';
+                    syncedCount++;
+                    
+                    // Clear the highlighting after a moment
+                    setTimeout(() => {
+                        otherInput.style.border = '';
+                        otherInput.style.backgroundColor = '';
+                    }, 2000);
+                }
+            }
+        }
+        
+        if (syncedCount > 0) {
+            // Show a brief confirmation
+            const message = document.createElement('div');
+            message.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                padding: 10px 15px;
+                border-radius: 5px;
+                z-index: 1000;
+                font-weight: bold;
+            `;
+            message.textContent = `✓ Synced birth year to ${syncedCount} other deceased face(s)`;
+            document.body.appendChild(message);
+            
+            setTimeout(() => {
+                document.body.removeChild(message);
+            }, 3000);
+        }
+    }
+
+    function setupBirthYearSync() {
+        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+        
+        for (let i = 1; i <= faceCount; i++) {
+            const birthYearInput = document.getElementById(`face${i}_year`);
+            
+            if (birthYearInput) {
+                birthYearInput.addEventListener('blur', () => {
+                    syncDeceasedBirthYears(i);
+                });
+            }
+        }
+    }
+
     function showDirectImage(imageUrl, bbox, faceIndex, roll) {
         return new Promise((resolve) => {
             const img = new Image();
@@ -494,9 +661,16 @@
         });
     }
 
-    window.onload = function() {
+    // UPDATED window load handler
+    window.addEventListener('load', function() {
         loadFaces();
-    };
+        
+        // Set up the new validation after faces are loaded
+        setTimeout(() => {
+            setupDeceasedValidation();
+            setupBirthYearSync();
+        }, 2000);
+    });
 
     async function loadFaces() {
         const faceCount = parseInt(getUrlParameter('face_count')) || 0;
@@ -756,7 +930,13 @@
         }
     }
 
+    // UPDATED submitForm function with validation
     async function submitForm() {
+        // NEW: Validate deceased birth years first
+        if (!validateDeceasedBirthYears()) {
+            return; // Stop submission if validation fails
+        }
+        
         document.querySelectorAll('.error').forEach(el => el.textContent = '');
         
         const faceCount = parseInt(getUrlParameter('face_count')) || 0;
