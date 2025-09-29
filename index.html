@@ -194,6 +194,50 @@
             border-radius: 5px;
             margin-bottom: 20px;
         }
+        .thank-you-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #007bff;
+            z-index: 2000;
+            display: none;
+            overflow-y: auto;
+        }
+        .thank-you-content {
+            background: #ede7d4;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .thank-you-icon {
+            font-size: 60px;
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+        .thank-you-title {
+            font-size: 32px;
+            color: #63462f;
+            margin-bottom: 25px;
+            font-weight: bold;
+        }
+        .thank-you-message {
+            font-size: 18px;
+            color: #63462f;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .thank-you-footer {
+            font-size: 14px;
+            color: #666;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+        }
         .loading {
             color: #666;
             font-style: italic;
@@ -323,6 +367,22 @@
         <span class="close" onclick="closeModal()">&times;</span>
         <div class="modal-content">
             <img id="modalImg" src="">
+        </div>
+    </div>
+
+    <!-- Thank you overlay that appears after successful submission -->
+    <div id="thankYouOverlay" class="thank-you-overlay">
+        <div class="thank-you-content">
+            <div class="thank-you-icon">✓</div>
+            <h1 class="thank-you-title">Thank You!</h1>
+            <p class="thank-you-message">
+                Thank you for providing more useful information - this will improve the accuracy of your aged sorted photos. 
+                <br><br>
+                Please keep an eye on your inbox for when the photos are ready - should be within 5-10 more minutes.
+            </p>
+            <div class="thank-you-footer">
+                Your form has been successfully submitted. You may close this window.
+            </div>
         </div>
     </div>
 
@@ -859,12 +919,19 @@
                 })
             });
         
-            document.getElementById('result').innerHTML = `
-                <div class="success">
-                    <h3>Thank you!</h3>
-                    <p>Your responses have been submitted successfully.</p>
-                </div>
-            `;
+            // Show thank you overlay instead of inline message
+            document.getElementById('thankYouOverlay').style.display = 'block';
+            
+            // Disable the submit button to prevent double submission
+            const submitBtn = document.querySelector('.submit-btn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                submitBtn.style.cursor = 'not-allowed';
+            }
+            
+            // Hide the main form content to prevent any interaction
+            document.querySelector('.container').style.display = 'none';
         
         } catch (error) {
             document.getElementById('result').innerHTML = `
