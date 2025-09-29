@@ -9,7 +9,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+            background: linear-gradient(180deg, #1e3c72 0%, #2a5298 50%, #7e8ba3 100%);
             min-height: 100vh;
         }
         .container {
@@ -253,6 +253,8 @@
         .image-overlay img {
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: block;
+            margin: 0 auto;
         }
         .face-box {
             position: absolute;
@@ -330,6 +332,9 @@
             text-align: center;
             font-weight: 600;
             font-size: 14px;
+        }
+        .image-wrapper {
+            text-align: center;
         }
         @media (max-width: 768px) {
             .form-card {
@@ -610,23 +615,25 @@
                 console.log(`Face ${faceIndex}: Using pre-corrected image, bbox=`, faceBox);
                 
                 const imageHtml = `
-                    <div class="image-overlay" onclick="openModal('${imageUrl}'); return false;">
-                        <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
-                               style="max-width: 300px; height: auto;"
-                               onclick="openModal('${imageUrl}'); return false;">
-                        <div class="face-box" style="
-                            left: ${faceBox.left}px; 
-                            top: ${faceBox.top}px; 
-                            width: ${faceBox.width}px; 
-                            height: ${faceBox.height}px;
-                            pointer-events: none;
-                        "></div>
-                    </div>
-                    <div class="click-hint">
-                        Click image to enlarge
-                    </div>
-                    <div style="font-size: 12px; color: #666; margin-top: 3px;">
-                        Blue box shows detected face area
+                    <div class="image-wrapper">
+                        <div class="image-overlay" onclick="openModal('${imageUrl}'); return false;">
+                            <img src="${imageUrl}" alt="Full Image ${faceIndex}" 
+                                   style="max-width: 300px; height: auto;"
+                                   onclick="openModal('${imageUrl}'); return false;">
+                            <div class="face-box" style="
+                                left: ${faceBox.left}px; 
+                                top: ${faceBox.top}px; 
+                                width: ${faceBox.width}px; 
+                                height: ${faceBox.height}px;
+                                pointer-events: none;
+                            "></div>
+                        </div>
+                        <div class="click-hint">
+                            Click image to enlarge
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-top: 3px;">
+                            Blue box shows detected face area
+                        </div>
                     </div>
                 `;
                 
