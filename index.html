@@ -255,55 +255,26 @@
             color: #666;
             margin-top: 2px;
         }
-        .file-drop-zone {
-            border: 2px dashed #dee2e6;
+        .deceased-reminder {
+            background-color: #ffe0b2;
+            border: 2px solid #ff9800;
             border-radius: 8px;
-            padding: 20px;
+            padding: 15px;
+            margin: 20px 0;
             text-align: center;
-            background-color: #fff;
-            min-height: 120px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            transition: all 0.2s ease;
-            margin-top: 8px;
+            font-size: 16px;
+            color: #e65100;
+            font-weight: bold;
         }
-        .file-drop-zone:hover {
-            border-color: #007bff;
-            background-color: #f8f9ff;
-        }
-        .file-drop-zone.dragover {
-            border-color: #007bff;
-            background-color: #e7f3ff;
-        }
-        .upload-slot {
-            margin-bottom: 15px;
-        }
-        .drop-text {
-            color: #6c757d;
-            font-size: 14px;
-        }
-        .preview {
-            margin-top: 10px;
-        }
-        .preview img {
-            max-width: 100px;
-            max-height: 100px;
+        .submit-error {
+            background-color: #ffebee;
+            border: 2px solid #f44336;
             border-radius: 5px;
-            border: 1px solid #dee2e6;
-        }
-        .remove-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 5px 10px;
-            font-size: 12px;
-            cursor: pointer;
-            margin-top: 5px;
-        }
-        .remove-btn:hover {
-            background-color: #c82333;
+            padding: 10px;
+            margin-top: 10px;
+            color: #c62828;
+            text-align: center;
+            font-weight: bold;
         }
         @media (max-width: 600px) {
             .input-section {
@@ -319,7 +290,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Sort By Age - Family Photo Face Recognition</h1>
+        <h1>MemorialVideo.AI - Family Photo Face Recognition</h1>
         
         <div class="notice-box">
             <h2>Important Notice</h2>
@@ -332,81 +303,17 @@
             <div class="loading">Loading faces...</div>
         </div>
 
-        <!-- Conditional button for when deceased person is not shown -->
-        <div id="no-deceased-button" style="text-align: center; margin: 20px 0; display: none;">
-            <button onclick="handleNoDeceasedShown()" style="
-                background-color: #6c757d; 
-                color: white; 
-                padding: 15px 25px; 
-                border: none; 
-                border-radius: 5px; 
-                font-size: 16px; 
-                cursor: pointer;
-                margin-bottom: 10px;
-            ">
-                Click this button if the person who passed's face did not show up on this form
-            </button>
-            <div style="font-size: 12px; color: #666;">
-                This will mark that the deceased person is not among the detected faces
-            </div>
-        </div>
-
-        <!-- File uploader section (hidden initially) -->
-        <div id="deceased-upload-section" style="display: none; margin: 30px 0; padding: 25px; background-color: #f8f9fa; border-radius: 10px; border: 2px solid #dee2e6;">
-            <h3 style="text-align: center; color: #495057; margin-bottom: 20px;">Manual Deceased Person Photos</h3>
-            <p style="text-align: center; color: #6c757d; margin-bottom: 25px;">
-                Please drop in 4 cropped screenshots of the deceased person's face in the 4 quarters of their life.<br>
-                (For example, someone who passed at 80 years old: a photo at 10ish, 30ish, 50ish, 70ish)
-            </p>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 600px; margin: 0 auto;">
-                <div class="upload-slot">
-                    <label style="font-weight: bold; color: #495057;">Quarter 1 (Childhood/Youth)</label>
-                    <div class="file-drop-zone" id="upload-zone-1" ondrop="handleFileDrop(event, 1)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
-                        <input type="file" id="file-input-1" accept="image/*" style="display: none;" onchange="handleFileSelect(event, 1)">
-                        <div class="drop-text">
-                            <div>Drop image here or <span onclick="document.getElementById('file-input-1').click()" style="color: #007bff; cursor: pointer; text-decoration: underline;">click to browse</span></div>
-                        </div>
-                        <div class="preview" id="preview-1"></div>
-                    </div>
-                </div>
-                
-                <div class="upload-slot">
-                    <label style="font-weight: bold; color: #495057;">Quarter 2 (Young Adult)</label>
-                    <div class="file-drop-zone" id="upload-zone-2" ondrop="handleFileDrop(event, 2)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
-                        <input type="file" id="file-input-2" accept="image/*" style="display: none;" onchange="handleFileSelect(event, 2)">
-                        <div class="drop-text">
-                            <div>Drop image here or <span onclick="document.getElementById('file-input-2').click()" style="color: #007bff; cursor: pointer; text-decoration: underline;">click to browse</span></div>
-                        </div>
-                        <div class="preview" id="preview-2"></div>
-                    </div>
-                </div>
-                
-                <div class="upload-slot">
-                    <label style="font-weight: bold; color: #495057;">Quarter 3 (Middle Age)</label>
-                    <div class="file-drop-zone" id="upload-zone-3" ondrop="handleFileDrop(event, 3)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
-                        <input type="file" id="file-input-3" accept="image/*" style="display: none;" onchange="handleFileSelect(event, 3)">
-                        <div class="drop-text">
-                            <div>Drop image here or <span onclick="document.getElementById('file-input-3').click()" style="color: #007bff; cursor: pointer; text-decoration: underline;">click to browse</span></div>
-                        </div>
-                        <div class="preview" id="preview-3"></div>
-                    </div>
-                </div>
-                
-                <div class="upload-slot">
-                    <label style="font-weight: bold; color: #495057;">Quarter 4 (Later Life)</label>
-                    <div class="file-drop-zone" id="upload-zone-4" ondrop="handleFileDrop(event, 4)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)">
-                        <input type="file" id="file-input-4" accept="image/*" style="display: none;" onchange="handleFileSelect(event, 4)">
-                        <div class="drop-text">
-                            <div>Drop image here or <span onclick="document.getElementById('file-input-4').click()" style="color: #007bff; cursor: pointer; text-decoration: underline;">click to browse</span></div>
-                        </div>
-                        <div class="preview" id="preview-4"></div>
-                    </div>
-                </div>
-            </div>
+        <!-- Reminder when deceased person is not checked -->
+        <div id="deceased-reminder" class="deceased-reminder" style="display: none;">
+            Remember to check the <strong>"Check this box if this is the person who has passed"</strong> on the person who has passed
         </div>
 
         <button class="submit-btn" onclick="submitForm()">Submit</button>
+        
+        <!-- Error message for submit without deceased selection -->
+        <div id="submit-error" class="submit-error" style="display: none;">
+            Please mark which person has passed before submitting
+        </div>
         
         <div id="result"></div>
     </div>
@@ -442,7 +349,7 @@
         }
     }
 
-    // NEW VALIDATION FUNCTIONS
+    // Validation functions
     function validateDeceasedBirthYears() {
         const faceCount = parseInt(getUrlParameter('face_count')) || 0;
         const deceasedFaces = [];
@@ -661,14 +568,15 @@
         });
     }
 
-    // UPDATED window load handler
+    // Window load handler
     window.addEventListener('load', function() {
         loadFaces();
         
-        // Set up the new validation after faces are loaded
+        // Set up validation after faces are loaded
         setTimeout(() => {
             setupDeceasedValidation();
             setupBirthYearSync();
+            updateDeceasedReminder();
         }, 2000);
     });
 
@@ -718,7 +626,7 @@
                         <div class="input-section">
                             <div class="checkbox-section">
                                 <label class="checkbox-label deceased-checkbox">
-                                    <input type="checkbox" id="face${i}_deceased" onchange="updateDeceasedButtonVisibility()">
+                                    <input type="checkbox" id="face${i}_deceased" onchange="updateDeceasedReminder()">
                                     Check this box if this is the person who has passed
                                 </label>
                             </div>
@@ -777,132 +685,37 @@
             }
         }
         
-        // Initialize the deceased button visibility after loading
+        // Initialize the deceased reminder visibility after loading
         setTimeout(() => {
-            updateDeceasedButtonVisibility();
+            updateDeceasedReminder();
         }, 1000);
     }
 
-    let deceasedNotShownFlag = false;
-
-    function updateDeceasedButtonVisibility() {
+    function updateDeceasedReminder() {
         const faceCount = parseInt(getUrlParameter('face_count')) || 0;
         let anyDeceasedChecked = false;
 
         // Check if any deceased checkbox is checked
         for (let i = 1; i <= faceCount; i++) {
-            const deceasedCheckbox = document.getElementById('face' + i + '_deceased');
+            const deceasedCheckbox = document.getElementById(`face${i}_deceased`);
             if (deceasedCheckbox && deceasedCheckbox.checked) {
                 anyDeceasedChecked = true;
                 break;
             }
         }
 
-        // Show button only if no deceased boxes are checked
-        const noDeceasedButton = document.getElementById('no-deceased-button');
-        if (noDeceasedButton) {
-            noDeceasedButton.style.display = anyDeceasedChecked ? 'none' : 'block';
+        // Show reminder only if no deceased boxes are checked
+        const reminder = document.getElementById('deceased-reminder');
+        if (reminder) {
+            reminder.style.display = anyDeceasedChecked ? 'none' : 'block';
         }
 
-        // Reset the flag if someone checks a deceased box
+        // Hide submit error when a deceased checkbox is checked
         if (anyDeceasedChecked) {
-            deceasedNotShownFlag = false;
-        }
-    }
-
-    function handleNoDeceasedShown() {
-        deceasedNotShownFlag = true;
-        const noDeceasedButton = document.getElementById('no-deceased-button');
-        if (noDeceasedButton) {
-            noDeceasedButton.style.display = 'none';
-        }
-        
-        // Show the upload section instead of simple message
-        const uploadSection = document.getElementById('deceased-upload-section');
-        if (uploadSection) {
-            uploadSection.style.display = 'block';
-        }
-    }
-
-    // File upload variables and handlers
-    const uploadedFiles = {};
-
-    function handleDragOver(event) {
-        event.preventDefault();
-    }
-
-    function handleDragEnter(event) {
-        event.preventDefault();
-        event.target.classList.add('dragover');
-    }
-
-    function handleDragLeave(event) {
-        event.preventDefault();
-        event.target.classList.remove('dragover');
-    }
-
-    function handleFileDrop(event, quarter) {
-        event.preventDefault();
-        event.target.classList.remove('dragover');
-        
-        const files = event.dataTransfer.files;
-        if (files.length > 0) {
-            processFile(files[0], quarter);
-        }
-    }
-
-    function handleFileSelect(event, quarter) {
-        const file = event.target.files[0];
-        if (file) {
-            processFile(file, quarter);
-        }
-    }
-
-    function processFile(file, quarter) {
-        if (!file.type.startsWith('image/')) {
-            alert('Please select an image file.');
-            return;
-        }
-
-        // Store the file
-        uploadedFiles[`quarter${quarter}`] = file;
-
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById(`preview-${quarter}`);
-            preview.innerHTML = `
-                <img src="${e.target.result}" alt="Quarter ${quarter} preview">
-                <br>
-                <button class="remove-btn" onclick="removeFile(${quarter})">Remove</button>
-            `;
-            
-            // Hide the drop text
-            const dropZone = document.getElementById(`upload-zone-${quarter}`);
-            const dropText = dropZone.querySelector('.drop-text');
-            if (dropText) {
-                dropText.style.display = 'none';
+            const submitError = document.getElementById('submit-error');
+            if (submitError) {
+                submitError.style.display = 'none';
             }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function removeFile(quarter) {
-        delete uploadedFiles[`quarter${quarter}`];
-        const preview = document.getElementById(`preview-${quarter}`);
-        preview.innerHTML = '';
-        
-        // Show the drop text again
-        const dropZone = document.getElementById(`upload-zone-${quarter}`);
-        const dropText = dropZone.querySelector('.drop-text');
-        if (dropText) {
-            dropText.style.display = 'block';
-        }
-        
-        // Clear the file input
-        const fileInput = document.getElementById(`file-input-${quarter}`);
-        if (fileInput) {
-            fileInput.value = '';
         }
     }
 
@@ -930,14 +743,16 @@
         }
     }
 
-    // UPDATED submitForm function with validation
     async function submitForm() {
-        // NEW: Validate deceased birth years first
+        // Validate deceased birth years first
         if (!validateDeceasedBirthYears()) {
             return; // Stop submission if validation fails
         }
         
+        // Clear previous errors
         document.querySelectorAll('.error').forEach(el => el.textContent = '');
+        const submitError = document.getElementById('submit-error');
+        submitError.style.display = 'none';
         
         const faceCount = parseInt(getUrlParameter('face_count')) || 0;
         const orderId = getUrlParameter('order_id') || '';
@@ -979,11 +794,14 @@
             }
         }
         
-        if (deceasedFaces.length === 0 && !deceasedNotShownFlag) {
-            if (!confirm('No one was marked as the deceased person. Is the deceased person not shown in these faces?')) {
-                return;
-            }
-        } else if (deceasedFaces.length > 1) {
+        // Check if no deceased person was marked
+        if (deceasedFaces.length === 0) {
+            submitError.style.display = 'block';
+            return;
+        }
+        
+        // Confirm if multiple deceased faces marked
+        if (deceasedFaces.length > 1) {
             if (!confirm(`You marked ${deceasedFaces.length} faces as the deceased person. This likely means the same person appears in multiple age ranges. We'll merge these together. Continue?`)) {
                 return;
             }
@@ -999,65 +817,11 @@
             deceased_faces: deceasedFaces,
             unsure_faces: unsureFaces,
             skin_tones: skinTones,
-            deceased_not_shown: deceasedNotShownFlag,
             submitted_at: new Date().toISOString(),
             face_count: faceCount
         };
 
-        // Upload deceased photos if any were provided
-        if (deceasedNotShownFlag && Object.keys(uploadedFiles).length > 0) {
-            await uploadDeceasedPhotos(orderId);
-        }
-
         submitToS3(submissionData);
-    }
-
-    async function uploadDeceasedPhotos(orderId) {
-        document.getElementById('result').innerHTML = '<div class="loading">Uploading deceased person photos...</div>';
-        
-        try {
-            for (const [key, file] of Object.entries(uploadedFiles)) {
-                const fileName = `${orderId}_deceased_${key}.${file.name.split('.').pop()}`;
-                const uploadKey = `manual-deceased-photos/${orderId}/${fileName}`;
-                const uploadUrl = `https://order-by-age-uploads.s3.amazonaws.com/${uploadKey}`;
-                
-                await fetch(uploadUrl, {
-                    method: 'PUT',
-                    headers: { 
-                        'Content-Type': file.type,
-                        'x-amz-acl': 'bucket-owner-full-control'
-                    },
-                    body: file
-                });
-            }
-            
-            // Create a manifest of uploaded photos
-            const manifest = {
-                uploaded_at: new Date().toISOString(),
-                order_id: orderId,
-                photos: Object.keys(uploadedFiles).map(key => ({
-                    quarter: key,
-                    filename: `${orderId}_deceased_${key}.${uploadedFiles[key].name.split('.').pop()}`,
-                    original_name: uploadedFiles[key].name
-                }))
-            };
-            
-            const manifestKey = `manual-deceased-photos/${orderId}/manifest.json`;
-            const manifestUrl = `https://order-by-age-uploads.s3.amazonaws.com/${manifestKey}`;
-            
-            await fetch(manifestUrl, {
-                method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'x-amz-acl': 'bucket-owner-full-control'
-                },
-                body: JSON.stringify(manifest)
-            });
-            
-        } catch (error) {
-            console.error('Error uploading deceased photos:', error);
-            throw error;
-        }
     }
 
     async function submitToS3(data) {
@@ -1091,7 +855,7 @@
                 },
                 body: JSON.stringify({
                     completed_at: new Date().toISOString(),
-                    deceased_person_identified: data.deceased_faces.length > 0 || data.deceased_not_shown
+                    deceased_person_identified: data.deceased_faces.length > 0
                 })
             });
         
