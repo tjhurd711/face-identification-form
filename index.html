@@ -439,7 +439,7 @@
 
     // Validation functions
     function validateDeceasedBirthYears() {
-        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+        const faceCount = document.querySelectorAll('.face-container').length;
         const deceasedFaces = [];
         const deceasedBirthYears = [];
         
@@ -524,7 +524,7 @@
     }
 
     function syncDeceasedBirthYears(changedFaceIndex) {
-        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+        const faceCount = document.querySelectorAll('.face-container').length;
         const changedInput = document.getElementById(`face${changedFaceIndex}_year`);
         const changedCheckbox = document.getElementById(`face${changedFaceIndex}_deceased`);
         const changedUnsure = document.getElementById(`face${changedFaceIndex}_unsure`);
@@ -591,7 +591,7 @@
     }
 
     function setupBirthYearSync() {
-        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+        const faceCount = document.querySelectorAll('.face-container').length;
         
         for (let i = 1; i <= faceCount; i++) {
             const birthYearInput = document.getElementById(`face${i}_year`);
@@ -671,12 +671,37 @@
     });
 
     async function loadFaces() {
-        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
-        const orderId = getUrlParameter('order_id') || '';
+        const uid = getUrlParameter('uid');
+        
+        if (!uid) {
+            document.getElementById('faces-container').innerHTML = 
+                '<div style="text-align: center; color: #999;">No order ID provided.</div>';
+            return;
+        }
+        
+        // Load face data from S3
+        const dataUrl = `https://order-by-age-uploads.s3.amazonaws.com/face-form-data/${uid}/form_data.json`;
+        
+        let faceData;
+        try {
+            const response = await fetch(dataUrl);
+            if (!response.ok) {
+                throw new Error('Failed to load face data');
+            }
+            faceData = await response.json();
+        } catch (error) {
+            document.getElementById('faces-container').innerHTML = 
+                '<div style="text-align: center; color: red;">Error loading face data. Please contact support.</div>';
+            console.error('Error loading face data:', error);
+            return;
+        }
+        
+        const faceCount = faceData.face_count;
+        const faces = faceData.faces;
         
         if (faceCount === 0) {
             document.getElementById('faces-container').innerHTML = 
-                '<div style="text-align: center; color: #999;">No faces provided. This appears to be a demo page.</div>';
+                '<div style="text-align: center; color: #999;">No faces provided.</div>';
             return;
         }
         
@@ -694,80 +719,66 @@
         document.getElementById('faces-container').innerHTML = facesHtml;
         
         // Load faces one by one
-        for (let i = 1; i <= faceCount; i++) {
-            const faceUrl = getUrlParameter('face' + i + '_url');
-            const left = parseFloat(getUrlParameter('face' + i + '_left')) || 0;
-            const top = parseFloat(getUrlParameter('face' + i + '_top')) || 0;
-            const width = parseFloat(getUrlParameter('face' + i + '_width')) || 1;
-            const height = parseFloat(getUrlParameter('face' + i + '_height')) || 1;
-            const roll = parseFloat(getUrlParameter('face' + i + '_roll')) || 0;
+        for (const face of faces) {
+            const i = face.face_number;
+            const faceUrl = face.image_url;
+            const bbox = face.bbox;
+            const roll = face.roll_angle;
             
-            if (faceUrl) {
-                const bbox = { left, top, width, height };
+            try {
+                const imageHtml = await showDirectImage(faceUrl, bbox, i, roll);
+                const container = document.getElementById('face-container-' + i);
                 
-                try {
-                    const imageHtml = await showDirectImage(faceUrl, bbox, i, roll);
-                    const container = document.getElementById('face-container-' + i);
+                container.innerHTML = `
+                    <div class="face-label">Familiar Face ${i}</div>
+                    ${imageHtml}
                     
-                    container.innerHTML = `
-                        <div class="face-label">Familiar Face ${i}</div>
-                        ${imageHtml}
-                        
-                        <div class="input-section">
-                            <div class="input-card">
-                                <div class="input-card-title">Deceased Person</div>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="face${i}_deceased" onchange="updateDeceasedReminder()">
-                                    This is the person who has passed
-                                </label>
-                            </div>
-                            
-                            <div class="input-card">
-                                <div class="input-card-title">Skin Tone</div>
-                                <label class="radio-label">
-                                    <input type="radio" name="face${i}_skin_tone" value="light" checked>
-                                    Light skin (Caucasian)
-                                </label>
-                                <label class="radio-label">
-                                    <input type="radio" name="face${i}_skin_tone" value="dark">
-                                    Medium/Darker skin
-                                </label>
-                            </div>
-                            
-                            <div class="input-card">
-                                <div class="input-card-title">Birth Year</div>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="face${i}_unsure" onchange="handleUnsureChange(${i})">
-                                    I'm not sure of the birth year
-                                </label>
-                            </div>
+                    <div class="input-section">
+                        <div class="input-card">
+                            <div class="input-card-title">Deceased Person</div>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="face${i}_deceased" onchange="updateDeceasedReminder()">
+                                This is the person who has passed
+                            </label>
                         </div>
                         
-                        <div class="birth-year-section">
-                            <label>Enter Birth Year (at least within 3 years):</label>
-                            <input type="number" class="birth-year-input" 
-                                    id="face${i}_year" 
-                                    min="1900" max="2026" 
-                                    placeholder="e.g. 1985">
-                            <div class="error" id="face${i}_error"></div>
+                        <div class="input-card">
+                            <div class="input-card-title">Skin Tone</div>
+                            <label class="radio-label">
+                                <input type="radio" name="face${i}_skin_tone" value="light" checked>
+                                Light skin (Caucasian)
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="face${i}_skin_tone" value="dark">
+                                Medium/Darker skin
+                            </label>
                         </div>
-                    `;
+                        
+                        <div class="input-card">
+                            <div class="input-card-title">Birth Year</div>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="face${i}_unsure" onchange="handleUnsureChange(${i})">
+                                I'm not sure of the birth year
+                            </label>
+                        </div>
+                    </div>
                     
-                } catch (error) {
-                    const container = document.getElementById('face-container-' + i);
-                    container.innerHTML = `
-                        <div class="face-label">Face ${i}</div>
-                        <div style="color: red; padding: 10px;">
-                            Error loading face image
-                        </div>
-                    `;
-                }
-            } else {
+                    <div class="birth-year-section">
+                        <label>Enter Birth Year (at least within 3 years):</label>
+                        <input type="number" class="birth-year-input" 
+                                id="face${i}_year" 
+                                min="1900" max="2026" 
+                                placeholder="e.g. 1985">
+                        <div class="error" id="face${i}_error"></div>
+                    </div>
+                `;
+                
+            } catch (error) {
                 const container = document.getElementById('face-container-' + i);
                 container.innerHTML = `
                     <div class="face-label">Face ${i}</div>
                     <div style="color: red; padding: 10px;">
-                        No image URL provided for this face
+                        Error loading face image
                     </div>
                 `;
             }
@@ -780,7 +791,7 @@
     }
 
     function updateDeceasedReminder() {
-        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
+        const faceCount = document.querySelectorAll('.face-container').length;
         let anyDeceasedChecked = false;
 
         // Check if any deceased checkbox is checked
@@ -842,8 +853,8 @@
         const submitError = document.getElementById('submit-error');
         submitError.style.display = 'none';
         
-        const faceCount = parseInt(getUrlParameter('face_count')) || 0;
-        const orderId = getUrlParameter('order_id') || '';
+        const faceCount = document.querySelectorAll('.face-container').length;
+        const orderId = getUrlParameter('uid') || '';
         
         const birthYears = {};
         const deceasedFaces = [];
