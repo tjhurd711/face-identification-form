@@ -437,6 +437,20 @@
         }
     }
 
+    function handleBoxNotOnFaceChange(faceIndex) {
+        const boxNotOnFaceCheckbox = document.getElementById(`face${faceIndex}_box_not_on_face`);
+        const birthYearInput = document.getElementById(`face${faceIndex}_year`);
+        const errorDiv = document.getElementById(`face${faceIndex}_error`);
+        
+        if (boxNotOnFaceCheckbox.checked) {
+            birthYearInput.disabled = true;
+            birthYearInput.value = '';
+            errorDiv.textContent = '';
+        } else {
+            birthYearInput.disabled = false;
+        }
+    }
+        
     // Validation functions
     function validateDeceasedBirthYears() {
         const faceCount = document.querySelectorAll('.face-container').length;
@@ -760,8 +774,11 @@
                                 <input type="checkbox" id="face${i}_unsure" onchange="handleUnsureChange(${i})">
                                 I'm not sure of the birth year
                             </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="face${i}_box_not_on_face" onchange="handleBoxNotOnFaceChange(${i})">
+                                Box was not on face
+                            </label>
                         </div>
-                    </div>
                     
                     <div class="birth-year-section">
                         <label>Enter Birth Year (at least within 3 years):</label>
@@ -842,7 +859,7 @@
         }
     }
 
-    async function submitForm() {
+async function submitForm() {
         // Validate deceased birth years first
         if (!validateDeceasedBirthYears()) {
             return; // Stop submission if validation fails
@@ -866,10 +883,11 @@
             const yearInput = document.getElementById('face' + i + '_year');
             const deceasedCheckbox = document.getElementById('face' + i + '_deceased');
             const unsureCheckbox = document.getElementById('face' + i + '_unsure');
+            const boxNotOnFaceCheckbox = document.getElementById('face' + i + '_box_not_on_face');  // NEW
             const skinToneRadio = document.querySelector(`input[name="face${i}_skin_tone"]:checked`);
             const error = document.getElementById('face' + i + '_error');
         
-            if (yearInput && deceasedCheckbox && unsureCheckbox && error) {
+            if (yearInput && deceasedCheckbox && unsureCheckbox && boxNotOnFaceCheckbox && error) {
                 if (deceasedCheckbox.checked) {
                     deceasedFaces.push(`person_${i}`);
                 }
@@ -879,7 +897,8 @@
                     skinTones[`person_${i}`] = skinToneRadio.value; // "light" or "dark"
                 }
         
-                if (unsureCheckbox.checked) {
+                // NEW: Check both unsure AND box_not_on_face
+                if (unsureCheckbox.checked || boxNotOnFaceCheckbox.checked) {
                     unsureFaces.push(`person_${i}`);
                 } else {
                     const year = parseInt(yearInput.value);
