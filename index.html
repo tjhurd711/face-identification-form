@@ -339,6 +339,69 @@
         .image-wrapper {
             text-align: center;
         }
+
+        /* Already Submitted Overlay */
+        .already-submitted-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #a8c5e6 0%, #c1d9f0 100%);
+            z-index: 3000;
+            display: none;
+            overflow-y: auto;
+        }
+        .already-submitted-content {
+            background: white;
+            max-width: 600px;
+            margin: 80px auto;
+            padding: 50px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            border: 10px solid #1e3c72;
+        }
+        .already-submitted-icon {
+            width: 80px;
+            height: 80px;
+            background: #3b82f6;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            font-size: 40px;
+            color: white;
+        }
+        .already-submitted-title {
+            font-size: 28px;
+            color: #1e3c72;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .already-submitted-message {
+            font-size: 16px;
+            color: #4a5568;
+            line-height: 1.7;
+            margin-bottom: 30px;
+        }
+        .already-submitted-footer {
+            font-size: 14px;
+            color: #718096;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+        .already-submitted-footer a {
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .already-submitted-footer a:hover {
+            text-decoration: underline;
+        }
+
         @media (max-width: 768px) {
             .form-card {
                 padding: 30px 20px;
@@ -354,8 +417,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="form-card
-
+        <div class="form-card">
             <div style="text-align: center; margin: -40px -40px 30px -40px; padding: 30px; background: white; border-radius: 12px 12px 0 0;">
                 <img src="https://www.dropbox.com/scl/fi/i5ye9vg5wzfvxwyrwczq6/Untitled-940-x-600-px-1400-x-600-px.png?rlkey=rk5t9ot5gchvjcqx71lwiln1o&st=6szyks34&raw=1" 
                      alt="MemorialVideo.AI Logo" 
@@ -414,6 +476,22 @@
         </div>
     </div>
 
+    <!-- Already Submitted Overlay - NEW -->
+    <div id="alreadySubmittedOverlay" class="already-submitted-overlay">
+        <div class="already-submitted-content">
+            <div class="already-submitted-icon">✓</div>
+            <h1 class="already-submitted-title">Already Submitted</h1>
+            <p class="already-submitted-message">
+                You've already submitted your face identification information for this order.
+                <br><br>
+                We're processing your photos now. You'll receive an email when your age-sorted photos are ready — typically within 25-35 minutes of your original submission.
+            </p>
+            <div class="already-submitted-footer">
+                Questions? Contact us at <a href="mailto:team@memorialvideo.ai">team@memorialvideo.ai</a>
+            </div>
+        </div>
+    </div>
+
     <script>
     function getUrlParameter(name) {
         name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
@@ -421,6 +499,27 @@
         const results = regex.exec(location.search);
         const value = results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         return value;
+    }
+
+    // NEW: Check if form was already submitted
+    async function checkIfAlreadySubmitted() {
+        const uid = getUrlParameter('uid');
+        if (!uid) return false;
+        
+        try {
+            const url = `https://order-by-age-uploads.s3.amazonaws.com/ff-analysis/${uid}/form_submission.json`;
+            const response = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+            return response.ok;
+        } catch (error) {
+            console.log('Submission check failed (assuming not submitted):', error);
+            return false;
+        }
+    }
+
+    // NEW: Show already submitted overlay
+    function showAlreadySubmittedOverlay() {
+        document.getElementById('alreadySubmittedOverlay').style.display = 'block';
+        document.querySelector('.container').style.display = 'none';
     }
 
     function handleUnsureChange(faceIndex) {
@@ -672,8 +771,16 @@
         });
     }
 
-    // Window load handler
-    window.addEventListener('load', function() {
+    // Window load handler - UPDATED to check for existing submission
+    window.addEventListener('load', async function() {
+        // NEW: Check if already submitted before loading form
+        const alreadySubmitted = await checkIfAlreadySubmitted();
+        if (alreadySubmitted) {
+            showAlreadySubmittedOverlay();
+            return; // Don't load the form
+        }
+        
+        // Continue with normal loading
         loadFaces();
         
         // Set up validation after faces are loaded
@@ -779,7 +886,7 @@
                                 Box was not on face
                             </label>
                         </div>
-                    </div>  <!-- ADD THIS: Close the .input-section div -->
+                    </div>
                     
                     <div class="birth-year-section">
                         <label>Enter Birth Year (at least within 3 years):</label>
@@ -884,7 +991,7 @@ async function submitForm() {
             const yearInput = document.getElementById('face' + i + '_year');
             const deceasedCheckbox = document.getElementById('face' + i + '_deceased');
             const unsureCheckbox = document.getElementById('face' + i + '_unsure');
-            const boxNotOnFaceCheckbox = document.getElementById('face' + i + '_box_not_on_face');  // NEW
+            const boxNotOnFaceCheckbox = document.getElementById('face' + i + '_box_not_on_face');
             const skinToneRadio = document.querySelector(`input[name="face${i}_skin_tone"]:checked`);
             const error = document.getElementById('face' + i + '_error');
         
@@ -895,10 +1002,10 @@ async function submitForm() {
                 
                 // Collect skin tone selection
                 if (skinToneRadio) {
-                    skinTones[`person_${i}`] = skinToneRadio.value; // "light" or "dark"
+                    skinTones[`person_${i}`] = skinToneRadio.value;
                 }
         
-                // NEW: Check both unsure AND box_not_on_face
+                // Check both unsure AND box_not_on_face
                 if (unsureCheckbox.checked || boxNotOnFaceCheckbox.checked) {
                     unsureFaces.push(`person_${i}`);
                 } else {
