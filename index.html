@@ -647,6 +647,26 @@
     // Custom modal functions (replaces native alert/confirm)
     let confirmResolve = null;
 
+    // Store deceased birth year from presentation settings
+    let deceasedBirthYear = null;
+
+    // Load deceased birth year from presentation settings
+    async function loadDeceasedBirthYear(uid) {
+        try {
+            const settingsUrl = `https://order-by-age-uploads.s3.amazonaws.com/metadata/${uid}/presentation_settings.json`;
+            const response = await fetch(settingsUrl);
+            if (response.ok) {
+                const settings = await response.json();
+                if (settings.birthdate) {
+                    deceasedBirthYear = parseInt(settings.birthdate.split('-')[0]);
+                    console.log('Loaded deceased birth year:', deceasedBirthYear);
+                }
+            }
+        } catch (error) {
+            console.log('Could not load presentation settings:', error);
+        }
+    }
+
     function showCustomAlert(title, bodyHtml) {
         document.getElementById('alertModalTitle').textContent = title;
         document.getElementById('alertModalBody').innerHTML = bodyHtml;
@@ -993,6 +1013,9 @@
             return;
         }
         
+        // Load deceased birth year from presentation settings
+        await loadDeceasedBirthYear(uid);
+        
         // Load face data from S3
         const dataUrl = `https://order-by-age-uploads.s3.amazonaws.com/face-form-data/${uid}/form_data.json`;
         
@@ -1112,12 +1135,50 @@
         const faceCount = document.querySelectorAll('.face-container').length;
         let anyDeceasedChecked = false;
 
-        // Check if any deceased checkbox is checked
+        // Check each face and handle deceased auto-fill
         for (let i = 1; i <= faceCount; i++) {
             const deceasedCheckbox = document.getElementById(`face${i}_deceased`);
+            const birthYearInput = document.getElementById(`face${i}_year`);
+            const unsureCheckbox = document.getElementById(`face${i}_unsure`);
+            const errorDiv = document.getElementById(`face${i}_error`);
+            
             if (deceasedCheckbox && deceasedCheckbox.checked) {
                 anyDeceasedChecked = true;
-                break;
+                
+                // Auto-fill birth year for deceased faces
+                if (deceasedBirthYear && birthYearInput) {
+                    birthYearInput.value = deceasedBirthYear;
+                    birthYearInput.disabled = true;
+                    birthYearInput.style.backgroundColor = '#e8f5e9';
+                    birthYearInput.style.border = '2px solid #4caf50';
+                    
+                    // Clear any error
+                    if (errorDiv) {
+                        errorDiv.textContent = '';
+                    }
+                }
+                
+                // Disable and uncheck "unsure" for deceased faces
+                if (unsureCheckbox) {
+                    unsureCheckbox.checked = false;
+                    unsureCheckbox.disabled = true;
+                    unsureCheckbox.parentElement.style.opacity = '0.5';
+                    unsureCheckbox.parentElement.title = 'Birth year is required for deceased person';
+                }
+            } else {
+                // Re-enable controls for non-deceased faces
+                if (birthYearInput && !document.getElementById(`face${i}_unsure`).checked && 
+                    !document.getElementById(`face${i}_box_not_on_face`).checked) {
+                    birthYearInput.disabled = false;
+                    birthYearInput.style.backgroundColor = '';
+                    birthYearInput.style.border = '';
+                }
+                
+                if (unsureCheckbox) {
+                    unsureCheckbox.disabled = false;
+                    unsureCheckbox.parentElement.style.opacity = '1';
+                    unsureCheckbox.parentElement.title = '';
+                }
             }
         }
 
@@ -1161,6 +1222,22 @@
     }
 
     async function submitForm() {
+        // Auto-assign deceased birth year to any deceased faces missing it
+        const faceCount = document.querySelectorAll('.face-container').length;
+        for (let i = 1; i <= faceCount; i++) {
+            const deceasedCheckbox = document.getElementById(`face${i}_deceased`);
+            const birthYearInput = document.getElementById(`face${i}_year`);
+            const unsureCheckbox = document.getElementById(`face${i}_unsure`);
+            
+            if (deceasedCheckbox && deceasedCheckbox.checked) {
+                // Force birth year for deceased faces
+                if (deceasedBirthYear && (!birthYearInput.value || unsureCheckbox.checked)) {
+                    birthYearInput.value = deceasedBirthYear;
+                    unsureCheckbox.checked = false;
+                }
+            }
+        }
+        
         // Validate deceased birth years first
         if (!validateDeceasedBirthYears()) {
             return; // Stop submission if validation fails
@@ -1171,7 +1248,6 @@
         const submitError = document.getElementById('submit-error');
         submitError.style.display = 'none';
         
-        const faceCount = document.querySelectorAll('.face-container').length;
         const orderId = getUrlParameter('uid') || '';
         
         const birthYears = {};
@@ -1199,7 +1275,17 @@
                 }
         
                 // Check both unsure AND box_not_on_face
-                if (unsureCheckbox.checked || boxNotOnFaceCheckbox.checked) {
+                // BUT: deceased faces should NEVER be marked unsure
+                if (deceasedCheckbox.checked) {
+                    // Deceased faces always get birth year (from auto-fill or manual entry)
+                    const year = parseInt(yearInput.value) || deceasedBirthYear;
+                    if (year && year >= 1900 && year <= 2026) {
+                        birthYears[`person_${i}`] = year;
+                    } else {
+                        error.textContent = 'Birth year is required for the deceased person';
+                        hasErrors = true;
+                    }
+                } else if (unsureCheckbox.checked || boxNotOnFaceCheckbox.checked) {
                     unsureFaces.push(`person_${i}`);
                 } else {
                     const year = parseInt(yearInput.value);
